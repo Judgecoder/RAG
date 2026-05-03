@@ -1,0 +1,57 @@
+# 临时文件和缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 数据库和向量存储
+chroma/
+
+# 模型文件（大文件）
+mineru_model/
+
+# 文档处理输出
+mineru_output/
+
+# 上传的文件
+uploads/
+
+# 日志文件
+*.log
+
+# 配置文件（可能包含敏感信息）
+.env
+.env.local
+.env.*.local
+
+# 其他
+.DS_Store
+route_index.json

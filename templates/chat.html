@@ -1,0 +1,3666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于Advance RAG的智能知识库系统</title>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <style>
+        :root {
+            --primary: #007DFF;
+            --primary-dark: #0056CC;
+            --primary-light: #E6F2FF;
+            --secondary: #7B68EE;
+            --accent: #36D6E5;
+            --success: #00C853;
+            --warning: #FF9500;
+            --danger: #FF3B30;
+            --bg-base: #F5F7FA;
+            --bg-card: #ffffff;
+            --bg-card-glass: rgba(255, 255, 255, 0.88);
+            --text-primary: #1D2129;
+            --text-secondary: #4E5969;
+            --text-tertiary: #86909C;
+            --border: rgba(0, 0, 0, 0.06);
+            --border-light: rgba(0, 0, 0, 0.04);
+            --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.04);
+            --shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1);
+            --radius-sm: 12px;
+            --radius: 16px;
+            --radius-md: 20px;
+            --radius-lg: 24px;
+            --radius-xl: 28px;
+            --radius-full: 9999px;
+            --blur-sm: 12px;
+            --blur-md: 20px;
+            --blur-lg: 30px;
+            --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #F5F7FA 0%, #E8EDF2 50%, #F0F4F8 100%);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 顶部导航栏 - HarmonyOS风格 */
+        .top-nav {
+            height: 72px;
+            background: var(--bg-card-glass);
+            backdrop-filter: blur(var(--blur-md));
+            -webkit-backdrop-filter: blur(var(--blur-md));
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-logo {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 22px;
+            font-weight: 700;
+            box-shadow: var(--shadow);
+            transition: transform var(--transition-fast), box-shadow var(--transition-normal);
+        }
+
+        .brand-logo:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-md);
+        }
+
+        .brand-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .brand-tagline {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+            margin-left: 12px;
+            padding-left: 12px;
+            border-left: 1px solid var(--border);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            border-radius: var(--radius-full);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .nav-btn:hover {
+            background: rgba(0, 125, 255, 0.08);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .nav-btn.primary:hover {
+            background: var(--primary-dark);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-id {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            padding: 8px 16px;
+            background: rgba(0, 125, 255, 0.06);
+            border-radius: var(--radius-full);
+        }
+
+        /* 主布局 - HarmonyOS风格 */
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            padding: 16px;
+            gap: 16px;
+        }
+
+        /* 左侧边栏 - HarmonyOS风格卡片 */
+        .sidebar {
+            width: 320px;
+            background: var(--bg-card-glass);
+            backdrop-filter: blur(var(--blur-lg));
+            -webkit-backdrop-filter: blur(var(--blur-lg));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: box-shadow var(--transition-normal);
+        }
+
+        .sidebar:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(0, 125, 255, 0.04) 0%, rgba(123, 104, 238, 0.04) 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        /* 信息卡片 - HarmonyOS风格 */
+        .info-card {
+            background: linear-gradient(135deg, rgba(0, 125, 255, 0.04) 0%, rgba(123, 104, 238, 0.04) 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 20px;
+            transition: all var(--transition-normal);
+        }
+
+        .info-card:hover {
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .collapsible-header {
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            padding: 16px 18px;
+        }
+
+        .collapsible-header:hover {
+            color: var(--primary);
+        }
+
+        .header-content {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .collapse-icon {
+            margin-left: auto;
+            font-size: 12px;
+            transition: transform var(--transition-normal);
+        }
+
+        .collapsible-header.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .info-card-content {
+            max-height: 320px;
+            overflow: hidden;
+            transition: max-height var(--transition-normal);
+            padding: 0 18px 16px;
+        }
+
+        .info-card-content.collapsed {
+            max-height: 0;
+            padding-bottom: 0;
+        }
+
+        .info-list {
+            list-style: none;
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        .info-list li {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 8px;
+        }
+
+        .info-list li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 6px;
+            height: 6px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        .info-list strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* 上传区域 */
+        .upload-section {
+            background: var(--bg-card);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .upload-dropzone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--bg-base);
+            margin-bottom: 12px;
+        }
+
+        .upload-dropzone:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .upload-dropzone.dragover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            transform: scale(1.02);
+        }
+
+        .upload-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .upload-icon {
+            width: 28px;
+            height: 28px;
+            background: white;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            box-shadow: var(--shadow-sm);
+            flex-shrink: 0;
+        }
+
+        .upload-text-container {
+            flex: 1;
+        }
+
+        .upload-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .upload-hint {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* 文件列表 */
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: var(--bg-base);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            transition: all var(--transition-normal);
+        }
+
+        .file-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .file-item:hover {
+            border-color: rgba(0, 125, 255, 0.2);
+            background: var(--bg-card);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .file-item.success {
+            border-left: 3px solid var(--success);
+        }
+
+        .file-item.error {
+            border-left: 3px solid var(--danger);
+        }
+
+        .file-item.processing {
+            border-left: 3px solid var(--warning);
+        }
+
+        .file-icon-small {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .file-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+
+        .file-meta {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-status {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .file-status.success { color: var(--success); }
+        .file-status.error { color: var(--danger); }
+        .file-status.processing { color: var(--warning); }
+
+        .progress-bar {
+            width: 100%;
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar.show {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        /* 文档管理器 */
+        .document-manager {
+            margin-top: 16px;
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+        }
+
+        .document-manager .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .create-folder-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+        }
+
+        .create-folder-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        /* 文件夹列表 */
+        .folder-list {
+            margin-bottom: 12px;
+        }
+
+        .folder-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            margin-bottom: 2px;
+        }
+
+        .folder-item:hover {
+            background: var(--hover);
+        }
+
+        .folder-item.active {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .folder-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .folder-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .folder-actions button {
+            background: none;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-normal);
+        }
+
+        .folder-actions button:hover {
+            background: var(--hover);
+        }
+
+        /* 文档列表 */
+        .document-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .document-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: var(--radius);
+            cursor: move;
+            transition: all var(--transition-normal);
+            margin-bottom: 2px;
+        }
+
+        .document-item:hover {
+            background: var(--hover);
+        }
+
+        .document-item.selected {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .document-icon {
+            font-size: 14px;
+        }
+
+        .document-details {
+            flex: 1;
+        }
+
+        .document-name {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .document-meta {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .document-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .document-actions button {
+            background: none;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-normal);
+        }
+
+        .document-actions button:hover {
+            background: var(--hover);
+        }
+
+        /* 拖拽样式 */
+        .document-item.dragging {
+            opacity: 0.5;
+        }
+
+        .folder-item.drag-over {
+            background: var(--primary-light);
+            border: 2px dashed var(--primary);
+        }
+
+        /* 文档列表容器 */
+        .document-list-container {
+            margin-left: 16px;
+            margin-bottom: 4px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .document-list-container.show {
+            max-height: 400px;
+        }
+
+        .document-list-container .document-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        /* 右侧内容区 - HarmonyOS风格 */
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            gap: 16px;
+            align-items: stretch;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--bg-card-glass);
+            backdrop-filter: blur(var(--blur-lg));
+            -webkit-backdrop-filter: blur(var(--blur-lg));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            transition: box-shadow var(--transition-normal);
+            position: relative;
+            z-index: 1;
+        }
+
+        .chat-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 3px solid transparent;
+            border-radius: var(--radius-xl);
+            background: linear-gradient(90deg, 
+                #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3,
+                #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3
+            ) border-box;
+            background-size: 200% 200%;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: rainbow-border 3s linear infinite;
+            z-index: 1001;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .chat-area.generating::before {
+            opacity: 1;
+        }
+
+        .chat-area:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .model-status-panel {
+            width: 320px;
+            background: var(--bg-card-glass);
+            backdrop-filter: blur(var(--blur-lg));
+            -webkit-backdrop-filter: blur(var(--blur-lg));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: box-shadow var(--transition-normal);
+        }
+
+        .model-status-panel:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .model-status-header {
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(0, 125, 255, 0.04) 0%, rgba(123, 104, 238, 0.04) 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .model-status-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .model-status-subtitle {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .model-status-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .model-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(var(--blur-md));
+            -webkit-backdrop-filter: blur(var(--blur-md));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all var(--transition-normal);
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .model-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: rgba(0, 125, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .model-card-content {
+            flex: 1;
+        }
+
+        .model-card-header {
+            margin-bottom: 10px;
+        }
+
+        .model-status-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .model-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .model-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: var(--radius-full);
+            transition: all var(--transition-normal);
+            border: 1px solid transparent;
+        }
+
+        .model-status::before {
+            content: '';
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .model-status.online {
+            background: rgba(0, 200, 83, 0.1);
+            color: #00A849;
+        }
+
+        .model-status.online::before {
+            background: var(--success);
+            box-shadow: 0 0 12px var(--success), 0 0 20px rgba(0, 200, 83, 0.6);
+            animation: pulse-green 1.5s ease-in-out infinite;
+        }
+
+        .model-status.offline {
+            background: rgba(255, 59, 48, 0.1);
+            color: #D70015;
+        }
+
+        .model-status.offline::before {
+            background: var(--danger);
+        }
+
+        .model-status.error {
+            background: rgba(255, 149, 0, 0.1);
+            color: #E68A00;
+        }
+
+        .model-status.error::before {
+            background: var(--warning);
+            animation: pulse-orange 1.5s infinite;
+        }
+
+        @keyframes pulse-green {
+            0%, 100% {
+                box-shadow: 0 0 8px var(--success), 0 0 12px rgba(0, 200, 83, 0.5);
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 20px var(--success), 0 0 35px rgba(0, 200, 83, 0.8), 0 0 50px rgba(0, 200, 83, 0.4);
+                opacity: 0.9;
+                transform: scale(1.3);
+            }
+        }
+
+        @keyframes pulse-orange {
+            0%, 100% {
+                box-shadow: 0 0 8px var(--warning), 0 0 12px rgba(255, 149, 0, 0.5);
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 20px var(--warning), 0 0 35px rgba(255, 149, 0, 0.8), 0 0 50px rgba(255, 149, 0, 0.4);
+                opacity: 0.9;
+                transform: scale(1.3);
+            }
+        }
+
+        .model-card-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            transition: all var(--transition-normal);
+            flex-shrink: 0;
+        }
+
+        .model-card-icon.chat {
+            background: rgba(0, 125, 255, 0.12);
+            color: var(--primary);
+        }
+
+        .model-card-icon.embedding {
+            background: rgba(0, 200, 83, 0.12);
+            color: var(--success);
+        }
+
+        .model-card-icon.rerank {
+            background: rgba(255, 149, 0, 0.12);
+            color: var(--warning);
+        }
+
+        .model-card-icon.mineru {
+            background: rgba(156, 39, 176, 0.12);
+            color: #9c27b0;
+        }
+
+        .model-details {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .model-details::before {
+            content: '📦';
+        }
+
+        .model-message {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            background: rgba(99, 102, 241, 0.03);
+            border-radius: var(--radius-sm);
+            line-height: 1.4;
+        }
+
+        .model-time {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .model-time::before {
+            content: '🕐';
+        }
+
+        .model-metrics {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .model-metric {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            background: rgba(99, 102, 241, 0.05);
+            border-radius: var(--radius-sm);
+        }
+
+        .model-metric-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .model-metric-label {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            padding: 5px 10px;
+            border-radius: var(--radius-full);
+            margin-top: 10px;
+        }
+
+        .api-status.configured {
+            background: rgba(0, 200, 83, 0.1);
+            color: #00A849;
+        }
+
+        .api-status.not-configured {
+            background: rgba(255, 59, 48, 0.1);
+            color: #D70015;
+        }
+
+        .api-status::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .api-status.configured::before {
+            background: var(--success);
+        }
+
+        .api-status.not-configured::before {
+            background: var(--danger);
+        }
+
+        .model-controls {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 125, 255, 0.03);
+        }
+
+        .model-controls button {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(var(--blur-sm));
+            -webkit-backdrop-filter: blur(var(--blur-sm));
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .model-controls button:hover {
+            background: rgba(0, 125, 255, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .model-controls button:active {
+            transform: scale(0.96);
+        }
+
+        /* 知识库选择器 - HarmonyOS风格 */
+        .kb-bar {
+            background: var(--bg-card-glass);
+            backdrop-filter: blur(var(--blur-md));
+            -webkit-backdrop-filter: blur(var(--blur-md));
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .kb-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .kb-select-wrapper {
+            flex: 1;
+            max-width: 400px;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .kb-select {
+            width: 100%;
+            padding: 10px 36px 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-full);
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-card);
+            cursor: pointer;
+            appearance: none;
+            transition: all var(--transition-normal);
+        }
+
+        .kb-select:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .kb-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 125, 255, 0.12);
+        }
+
+        .kb-select-arrow {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            pointer-events: none;
+        }
+
+        /* 自定义下拉菜单样式 */
+        .custom-select-wrapper {
+            flex: 1;
+            max-width: 400px;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .custom-select {
+            position: relative;
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-card);
+            cursor: pointer;
+            transition: all var(--transition-normal);
+        }
+
+        .custom-select:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .custom-select.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 125, 255, 0.12);
+        }
+
+        .custom-select-value {
+            padding: 10px 36px 10px 14px;
+            display: flex;
+            align-items: center;
+        }
+
+        .custom-select-arrow {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            pointer-events: none;
+            transition: transform var(--transition-fast);
+        }
+
+        .custom-select.active .custom-select-arrow {
+            transform: translateY(-50%) rotate(180deg);
+        }
+
+        .custom-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+            margin-top: 2px;
+            transform: translateY(0);
+            transition: all var(--transition-normal);
+        }
+
+        .custom-select-dropdown.show {
+            display: block;
+            animation: dropdownFadeIn 0.2s ease-out;
+        }
+
+        @keyframes dropdownFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .custom-select-option {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .custom-select-option:last-child {
+            border-bottom: none;
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        }
+
+        .custom-select-option:hover {
+            background: rgba(0, 125, 255, 0.08);
+            color: var(--text-primary);
+            padding-left: 20px;
+        }
+
+        .custom-select-option.selected {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 500;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .custom-select-option.selected::before {
+            content: '✅';
+            position: absolute;
+            left: 12px;
+            font-size: 12px;
+        }
+
+        /* 小型删除按钮样式 */
+        .delete-btn-small {
+            background: none;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 8px;
+            padding: 2px 4px;
+            transition: all var(--transition-normal);
+            color: var(--text-tertiary);
+            transform: scale(1);
+        }
+
+        .delete-btn-small:hover {
+            color: #ef4444;
+            transform: scale(1.2) rotate(5deg);
+        }
+
+        .custom-select-option {
+            display: flex;
+            align-items: center;
+        }
+
+        .custom-select-option span {
+            flex: 1;
+        }
+
+        /* 设置面板样式 - HarmonyOS风格 */
+        .settings-wrapper {
+            position: relative;
+            z-index: 1000;
+        }
+
+        .settings-panel {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 12px;
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--blur-lg));
+            -webkit-backdrop-filter: blur(var(--blur-lg));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            width: 300px;
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+        }
+
+        .settings-panel.show {
+            display: block;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .settings-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .settings-content {
+            padding: 16px;
+        }
+
+        .setting-item {
+            margin-bottom: 18px;
+        }
+
+        .setting-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-item label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .setting-item input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-full);
+            font-size: 14px;
+            color: var(--text-primary);
+            background: var(--bg-base);
+            transition: all var(--transition-fast);
+        }
+
+        .setting-item input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 125, 255, 0.12);
+        }
+
+        .setting-hint {
+            display: block;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        .weight-slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 4px;
+        }
+
+        .weight-slider-container input[type="range"] {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(to right, var(--primary) 50%, var(--border) 50%);
+            border-radius: 3px;
+            outline: none;
+            padding: 0;
+            border: none;
+        }
+
+        .weight-slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            transition: transform 0.15s;
+        }
+
+        .weight-slider-container input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        .weight-slider-container input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        }
+
+        .weight-label {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            white-space: nowrap;
+            min-width: 3em;
+        }
+
+        .weight-label.weight-left {
+            text-align: right;
+        }
+
+        .weight-label.weight-right {
+            text-align: left;
+        }
+
+        .weight-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        .weight-display strong {
+            color: var(--primary);
+        }
+
+        #weight-slider-item.disabled .weight-label,
+        #weight-slider-item.disabled .weight-display,
+        #weight-slider-item.disabled label {
+            opacity: 0.4;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            margin-bottom: 0;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary);
+            border-radius: 4px;
+        }
+
+        .checkbox-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .settings-footer {
+            padding: 14px 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            background: rgba(0, 125, 255, 0.03);
+        }
+
+        .settings-save {
+            padding: 10px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-full);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .settings-save:hover {
+            background: var(--primary-dark);
+            box-shadow: var(--shadow);
+        }
+
+        .settings-save:active {
+            transform: scale(0.96);
+        }
+
+        .kb-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        /* 修复：图标旋转动画，只让内部的 icon 旋转 */
+        .icon-btn .icon {
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .icon-btn.spinning .icon {
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .model-card-icon {
+            position: relative;
+        }
+
+        .model-card-icon::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: var(--radius-lg);
+            background-color: var(--color-background-2);
+            z-index: 1;
+        }
+
+        .model-card-icon span {
+            position: relative;
+            z-index: 2;
+            display: inline-block;
+            animation: spin 4s linear infinite;
+        }
+
+        /* 修复：调整 tooltip 样式，避免被遮挡 */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip::after {
+            content: attr(data-tip);
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 12px;
+            background: var(--text-primary);
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: var(--radius);
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-md);
+            z-index: 2000;
+        }
+
+        .tooltip::before {
+            content: "";
+            position: absolute;
+            top: calc(100% + 2px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-bottom-color: var(--text-primary);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 2000;
+        }
+
+        .tooltip:hover::after,
+        .tooltip:hover::before {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* 聊天区域 - HarmonyOS风格 */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            margin: 16px;
+            background: transparent;
+            border-radius: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        @keyframes rainbow-border {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 100% 0%; }
+        }
+
+
+
+
+
+        .chat-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-tertiary);
+        }
+
+        .welcome-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, #dbeafe 100%);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 32px;
+        }
+
+        .welcome-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .welcome-text {
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .message {
+            max-width: 80%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+        }
+
+        .message-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            background: var(--bg-base);
+        }
+
+        .user-message {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .user-message .message-bubble {
+            background: var(--primary);
+            color: white;
+            border-radius: var(--radius-md) var(--radius-md) 4px var(--radius-md);
+            padding: 14px 18px;
+            font-size: 14px;
+            line-height: 1.5;
+            box-shadow: var(--shadow-md);
+        }
+
+        .user-message .message-avatar {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .bot-message {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+
+        .bot-message .message-bubble {
+            background: var(--bg-base);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md) var(--radius-md) var(--radius-md) 4px;
+            padding: 18px 24px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .bot-message .message-avatar {
+            background: #f0fdf4;
+            color: var(--success);
+        }
+
+        /* 源文档折叠 */
+        .source-section {
+            margin-top: 12px;
+        }
+
+        .source-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .source-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .source-toggle.active {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .source-toggle .arrow {
+            transition: transform 0.2s;
+            font-size: 10px;
+        }
+
+        .source-toggle.active .arrow {
+            transform: rotate(90deg);
+        }
+
+        .source-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .source-content.show {
+            max-height: 600px;
+            opacity: 1;
+            margin-top: 12px;
+        }
+
+        .source-list {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .source-item {
+            padding: 12px;
+            background: var(--bg-base);
+            border-radius: var(--radius);
+            border-left: 3px solid var(--primary);
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .source-index {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        /* 输入区域 */
+        .input-area {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-card);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            background: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            transition: all 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+            background: white;
+        }
+
+        #user-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 15px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            color: var(--text-primary);
+            min-height: 90px;
+            max-height: 120px;
+        }
+
+        #user-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .input-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .send-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .send-btn:disabled {
+            background: var(--text-tertiary);
+            cursor: not-allowed;
+        }
+
+        /* 打字指示器 */
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            padding: 16px 20px;
+            background: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-left: 36px;
+        }
+
+        .typing-indicator.show {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--text-tertiary);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+        }
+
+        /* 滚动条美化 - HarmonyOS风格 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: var(--radius-full);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        /* 响应式 */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .chat-container {
+                margin: 0;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <nav class="top-nav">
+        <div class="brand">
+            <div class="brand-logo">☁️</div>
+            <div>
+                <div class="brand-name">Advance RAG</div>
+            </div>
+            <div class="brand-tagline">云存储产品智能知识库系统</div>
+        </div>
+        <div class="nav-actions">
+            <div class="user-info">
+                <span class="user-id" id="user-id">加载中...</span>
+                <button class="nav-btn" id="logout-btn">登出</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-wrapper">
+        <!-- 左侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">知识库管理</div>
+                <div class="sidebar-subtitle">上传文档构建智能知识库</div>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- 使用指南 -->
+                <div class="info-card">
+                    <div class="collapsible-header">
+                        <div class="header-content">
+                            <span>💡</span>
+                            <span>使用指南</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                    </div>
+                    <div class="info-card-content">
+                        <ul class="info-list">
+                            <li>拖拽或点击上传文档，系统自动解析入库</li>
+                            <li>支持PDF、DOCX、DOC、TXT、MD、XLSX、CSV格式文档</li>
+                            <li>重复上传同名文件将覆盖历史版本</li>
+                            <li>在下方选择知识库开始智能问答</li>
+                            <li>无法确定要检索的文档，再选择“自动路由检索”</li>
+                            <li>点击⚙️按钮配置检索参数</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 上传区域 -->
+                <div class="upload-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <span>📁</span>
+                            <span>文档上传</span>
+                        </div>
+                    </div>
+
+                    <div class="upload-dropzone" id="dropzone">
+                        <div class="upload-content">
+                            <div class="upload-icon">☁️</div>
+                            <div class="upload-text-container">
+                                <div class="upload-text">点击或拖拽文件至此</div>
+                                <div class="upload-hint">支持 PDF、DOCX、DOC、TXT、MD、XLSX、CSV</div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="file" id="file-input" multiple accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.csv">
+
+                    <!-- 文件列表 -->
+                    <div class="file-list" id="file-list">
+                        <!-- 动态添加文件项 -->
+                    </div>
+                </div>
+
+                <!-- 文档管理器 -->
+                <div class="document-manager">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <span>📁</span>
+                            <span>文档管理</span>
+                        </div>
+                        <button class="create-folder-btn" id="create-folder-btn">
+                            <span>📁</span>
+                            <span>创建文件夹</span>
+                        </button>
+                    </div>
+                    <div class="folder-list" id="folder-list">
+                        <!-- 动态添加文件夹 -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右侧内容区 -->
+        <main class="content-area">
+            <div class="chat-area" id="chat-area">
+                <!-- 知识库选择栏 -->
+                <div class="kb-bar">
+                    <div class="kb-label">
+                        <span>📚</span>
+                        <span>当前知识库</span>
+                    </div>
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select" id="custom-collection-select">
+                            <div class="custom-select-value" id="custom-select-value">
+                                🔍 自动路由检索
+                            </div>
+                            <div class="custom-select-arrow">▼</div>
+                            <div class="custom-select-dropdown" id="custom-select-dropdown">
+                                <div class="custom-select-option selected" data-value="__auto__"><span>🔍 自动路由检索</span></div>
+                                <div class="custom-select-option" data-value=""><span>通用知识库（默认）</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="kb-actions">
+                        <button class="icon-btn tooltip" id="refresh-kb" data-tip="刷新列表">
+                            <span class="icon">🔄</span>
+                        </button>
+                        <div class="settings-wrapper">
+                            <button class="icon-btn tooltip" id="settings-btn" data-tip="设置">
+                                <span class="icon">⚙️</span>
+                            </button>
+                            <div class="settings-panel" id="settings-panel">
+                                <div class="settings-header">
+                                    <h3>检索设置</h3>
+                                </div>
+                                <div class="settings-content">
+                                    <div class="setting-item">
+                                        <label for="top-k">Top K (检索结果数):</label>
+                                        <input type="number" id="top-k" min="1" max="50" value="10">
+                                    </div>
+                                    <div class="setting-item">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="hybrid-search">
+                                            <span class="checkbox-text">启用混合检索</span>
+                                            <span class="tooltip" data-tip="向量检索 + 关键词检索，提升召回准确率" style="margin-left: 4px; color: var(--text-secondary); font-size: 14px; cursor: help;">?</span>
+                                        </label>
+                                    </div>
+                                    <div class="setting-item" id="weight-slider-item">
+                                        <label>检索权重平衡</label>
+                                        <div class="weight-slider-container">
+                                            <span class="weight-label weight-left">关键词</span>
+                                            <input type="range" id="vector-weight" min="0" max="100" value="50">
+                                            <span class="weight-label weight-right">向量</span>
+                                        </div>
+                                        <div class="weight-display">
+                                            <span>向量检索: <strong id="vector-weight-pct">50%</strong></span>
+                                            <span>关键词检索: <strong id="keyword-weight-pct">50%</strong></span>
+                                        </div>
+                                    </div>
+                                    <div class="setting-item">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="rerank">
+                                            <span class="checkbox-text">启用重排序</span>
+                                            <span class="tooltip" data-tip="对检索结果进行精排序，提升相关性" style="margin-left: 4px; color: var(--text-secondary); font-size: 14px; cursor: help;">?</span>
+                                        </label>
+                                    </div>
+                                    <div class="setting-item" id="rerank-top-k-item">
+                                        <label for="rerank-top-k">重排序Top K:</label>
+                                        <input type="number" id="rerank-top-k" min="1" max="20" value="5">
+                                    </div>
+                                </div>
+                                <div class="settings-footer">
+                                    <button class="settings-save" id="save-settings">保存</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 聊天消息区域 -->
+                <div class="chat-messages" id="chat-messages">
+                    <!-- 欢迎消息 -->
+                    <div class="welcome-message" id="welcome-msg">
+                        <div class="welcome-icon">🤖</div>
+                        <div class="welcome-title">智能问答助手已就绪</div>
+                        <div class="welcome-text">
+                            选择左侧知识库或上传新文档，开始体验基于 RAG 技术的智能问答服务。
+                            所有回答均基于您的私有知识库，确保数据安全与准确性。
+                        </div>
+                    </div>
+
+                    <!-- 打字指示器 -->
+                    <div class="typing-indicator" id="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+
+                <!-- 输入区域 -->
+                <div class="input-area">
+                    <div class="input-wrapper">
+                        <textarea id="user-input" rows="1" placeholder="输入您的问题，按 Enter 发送..."></textarea>
+                        <div class="input-actions">
+                            <button class="send-btn" id="send-button" disabled>
+                                ➤
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模型状态面板 -->
+            <div class="model-status-panel">
+                <div class="model-status-header">
+                    <div class="model-status-title">模型状态</div>
+                    <div class="model-status-subtitle">实时监控模型可用性</div>
+                </div>
+                <div class="model-status-content" id="model-status-content">
+                    <div class="model-card">
+                        <div class="model-card-icon chat"><span>⚙️</span></div>
+                        <div class="model-card-content">
+                            <div class="model-status-container">
+                                <div class="model-status online">在线</div>
+                            </div>
+                            <div class="model-card-header">
+                                <div class="model-name">对话模型</div>
+                            </div>
+                            <div class="model-details">-</div>
+                        </div>
+                    </div>
+                    <div class="model-card">
+                        <div class="model-card-icon embedding"><span>⚙️</span></div>
+                        <div class="model-card-content">
+                            <div class="model-status-container">
+                                <div class="model-status online">在线</div>
+                            </div>
+                            <div class="model-card-header">
+                                <div class="model-name">嵌入模型</div>
+                            </div>
+                            <div class="model-details">-</div>
+                        </div>
+                    </div>
+                    <div class="model-card">
+                        <div class="model-card-icon rerank"><span>⚙️</span></div>
+                        <div class="model-card-content">
+                            <div class="model-status-container">
+                                <div class="model-status online">在线</div>
+                            </div>
+                            <div class="model-card-header">
+                                <div class="model-name">重排模型</div>
+                            </div>
+                            <div class="model-details">-</div>
+                        </div>
+                    </div>
+                    <div class="model-card">
+                        <div class="model-card-icon mineru"><span>⚙️</span></div>
+                        <div class="model-card-content">
+                            <div class="model-status-container">
+                                <div class="model-status online">在线</div>
+                            </div>
+                            <div class="model-card-header">
+                                <div class="model-name">PDF解析模型</div>
+                            </div>
+                            <div class="model-details">-</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="model-controls">
+                    <button id="check-models">立即检测</button>
+                    <button id="clear-status">清除状态</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM 元素
+            const refreshBtn = document.getElementById('refresh-kb');
+
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('file-input');
+            const fileList = document.getElementById('file-list');
+            const settingsBtn = document.getElementById('settings-btn');
+            const settingsPanel = document.getElementById('settings-panel');
+            const topKInput = document.getElementById('top-k');
+            const hybridSearchCheckbox = document.getElementById('hybrid-search');
+            const vectorWeightSlider = document.getElementById('vector-weight');
+            const vectorWeightPct = document.getElementById('vector-weight-pct');
+            const keywordWeightPct = document.getElementById('keyword-weight-pct');
+            const weightSliderItem = document.getElementById('weight-slider-item');
+            const rerankCheckbox = document.getElementById('rerank');
+            const rerankTopKInput = document.getElementById('rerank-top-k');
+            const rerankTopKItem = document.getElementById('rerank-top-k-item');
+            const saveSettingsBtn = document.getElementById('save-settings');
+            const userIdElement = document.getElementById('user-id');
+            const logoutBtn = document.getElementById('logout-btn');
+            
+            // 自定义下拉菜单元素
+            const customSelect = document.getElementById('custom-collection-select');
+            const customSelectValue = document.getElementById('custom-select-value');
+            const customSelectDropdown = document.getElementById('custom-select-dropdown');
+            
+            // 聊天相关元素
+            const chatMessages = document.getElementById('chat-messages');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const welcomeMsg = document.getElementById('welcome-msg');
+            
+            // 点击下拉菜单显示/隐藏选项
+            if (customSelect) {
+                // 只给显示/隐藏区域添加点击事件
+                const selectValue = customSelect.querySelector('.custom-select-value');
+                const selectArrow = customSelect.querySelector('.custom-select-arrow');
+                
+                function toggleDropdown() {
+                    console.log('点击下拉菜单');
+                    customSelect.classList.toggle('active');
+                    customSelectDropdown.classList.toggle('show');
+                    console.log('下拉菜单状态:', {
+                        active: customSelect.classList.contains('active'),
+                        show: customSelectDropdown.classList.contains('show')
+                    });
+                }
+                
+                if (selectValue) {
+                    selectValue.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        toggleDropdown();
+                    });
+                }
+                
+                if (selectArrow) {
+                    selectArrow.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        toggleDropdown();
+                    });
+                }
+            } else {
+                console.error('自定义下拉菜单元素不存在');
+            }
+            
+            // 点击选项
+            if (customSelectDropdown) {
+                customSelectDropdown.addEventListener('click', async function(e) {
+                    e.stopPropagation();
+                    
+                    // 查找最近的选项元素
+                    const option = e.target.closest('.custom-select-option');
+                    if (option) {
+                        const value = option.dataset.value;
+                        // 获取选项文本（排除删除按钮）
+                        const text = option.querySelector('span').textContent;
+                        console.log('选择选项:', { value, text });
+                        
+                        // 更新显示值
+                        customSelectValue.textContent = text;
+                        
+                        // 标记选中状态
+                        document.querySelectorAll('.custom-select-option').forEach(opt => {
+                            opt.classList.remove('selected');
+                        });
+                        option.classList.add('selected');
+                        
+                        // 关闭下拉菜单
+                        customSelect.classList.remove('active');
+                        customSelectDropdown.classList.remove('show');
+                        
+                        // 自动路由模式：不切换集合，直接使用路由
+                        if (value === '__auto__') {
+                            console.log('已切换到自动路由检索模式');
+                            localStorage.setItem('auto_route_mode', 'true');
+                            // 重置所有文档项的选中状态
+                            document.querySelectorAll('.document-item').forEach(item => {
+                                item.classList.remove('selected');
+                            });
+                            renderFolders();
+                            return;
+                        }
+                        
+                        // 其他选项：关闭路由模式
+                        localStorage.setItem('auto_route_mode', 'false');
+                        
+                        // 发送切换请求
+                        try {
+                            await fetch('/collection/', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ collection_name: value })
+                            });
+                            console.log('切换知识库成功:', value);
+                            // 先清除所有文档项的选中状态（在renderFolders前标记需要高亮的文档）
+                            const highlightDoc = (value && value !== '') ? value : null;
+                            renderFolders();
+                            // renderFolders重建了文档项，此时再设置高亮
+                            document.querySelectorAll('.document-item').forEach(item => {
+                                item.classList.remove('selected');
+                            });
+                            if (highlightDoc) {
+                                const docItem = Array.from(document.querySelectorAll('.document-item')).find(
+                                    item => item.dataset.document === highlightDoc
+                                );
+                                if (docItem) docItem.classList.add('selected');
+                            }
+                        } catch (e) {
+                            console.error('Failed to switch collection:', e);
+                        }
+                    }
+                });
+            }
+            
+            // 点击页面其他地方关闭下拉菜单
+            document.addEventListener('click', function() {
+                if (customSelect && customSelectDropdown) {
+                    customSelect.classList.remove('active');
+                    customSelectDropdown.classList.remove('show');
+                }
+            });
+            
+            // 知识库管理
+            async function loadCollections() {
+                try {
+                    const res = await fetch('/collection/');
+                    const data = await res.json();
+
+                    // 更新自定义下拉菜单
+                    const current = data.collection_name;
+                    const isAutoRouteActive = localStorage.getItem('auto_route_mode') === 'true';
+
+                    // 如果是自动路由模式或首次加载（无current），选中"自动路由检索"
+                    // 如果是demo集合且非自动路由模式，选中"通用知识库（默认）"
+                    const selectAutoRoute = isAutoRouteActive || !current;
+                    const selectGeneral = !selectAutoRoute && current === 'demo';
+
+                    customSelectDropdown.innerHTML = `
+                        <div class="custom-select-option ${selectAutoRoute ? 'selected' : ''}" data-value="__auto__"><span>🔍 自动路由检索</span></div>
+                        <div class="custom-select-option ${selectGeneral ? 'selected' : ''}" data-value=""><span>通用知识库（默认）</span></div>
+                    `;
+
+                    if (selectAutoRoute) {
+                        customSelectValue.textContent = '🔍 自动路由检索';
+                    } else if (selectGeneral) {
+                        customSelectValue.textContent = '通用知识库（默认）';
+                    }
+
+                    data.name_list.forEach(name => {
+                        // 知识库选项
+                        const option = document.createElement('div');
+                        option.className = 'custom-select-option';
+                        option.dataset.value = name;
+                        option.innerHTML = `
+                            <span>${name}</span>
+                            <button class="delete-btn-small" data-file="${name}" title="删除文档">🗑️</button>
+                        `;
+                        if (name === current && !isAutoRouteActive) {
+                            option.classList.add('selected');
+                            customSelectValue.textContent = name;
+                        }
+                        customSelectDropdown.appendChild(option);
+                    });
+
+                    // 绑定删除选项事件
+                    bindDeleteOptionsEvents();
+                } catch (e) {
+                    console.error('Failed to load collections:', e);
+                }
+            }
+            
+            // 绑定删除选项事件
+            function bindDeleteOptionsEvents() {
+                const deleteBtns = document.querySelectorAll('.delete-btn-small');
+                deleteBtns.forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation(); // 阻止事件冒泡，避免触发选项选择
+                        const filename = this.dataset.file;
+                        deleteDocument(filename);
+                    });
+                });
+            }
+            
+            // 删除文档
+            async function deleteDocument(filename) {
+                if (!confirm(`确定要删除文档 "${filename}" 吗？此操作将删除本地文件和向量数据库中的相关数据。`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/document/?filename=${encodeURIComponent(filename)}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.message === '文档删除成功') {
+                        // 重新加载知识库列表
+                        await loadCollections();
+
+                        alert('文档删除成功！');
+                    } else {
+                        alert('文档删除失败: ' + data.message);
+                    }
+                } catch (error) {
+                    console.error('删除文档失败:', error);
+                    alert('删除文档时发生错误，请重试。');
+                }
+            }
+            
+            // 模型状态相关元素
+            const modelStatusContent = document.getElementById('model-status-content');
+            const checkModelsBtn = document.getElementById('check-models');
+            const clearStatusBtn = document.getElementById('clear-status');
+            
+            // 动态模型名称（从 models.py 获取）
+            let modelNames = {};
+
+            async function fetchModelNames() {
+                try {
+                    const response = await fetch('/api/model-names');
+                    const data = await response.json();
+                    modelNames = data;
+                } catch (e) {
+                    modelNames = { chat: '-', embedding: '-', rerank: '-', mineru: 'MinerU' };
+                }
+            }
+            
+            // 聊天区域元素
+            const chatArea = document.getElementById('chat-area');
+
+
+
+            // 修复：刷新按钮事件 - 只让图标旋转，不是整个按钮
+            refreshBtn.addEventListener('click', async () => {
+                // 添加旋转动画类
+                refreshBtn.classList.add('spinning');
+
+                // 执行刷新
+                await loadCollections();
+
+                // 停止旋转（保留一点延迟让用户感知）
+                setTimeout(() => {
+                    refreshBtn.classList.remove('spinning');
+                }, 500);
+            });
+
+            // 加载设置
+            function loadSettings() {
+                const savedTopK = localStorage.getItem('topK');
+                if (savedTopK) {
+                    topKInput.value = savedTopK;
+                }
+                const savedHybridSearch = localStorage.getItem('hybridSearch');
+                if (savedHybridSearch === 'true') {
+                    hybridSearchCheckbox.checked = true;
+                }
+                const savedVectorWeight = localStorage.getItem('vectorWeight');
+                if (savedVectorWeight !== null) {
+                    vectorWeightSlider.value = savedVectorWeight;
+                    const vectorVal = parseInt(savedVectorWeight);
+                    const keywordVal = 100 - vectorVal;
+                    vectorWeightPct.textContent = vectorVal + '%';
+                    keywordWeightPct.textContent = keywordVal + '%';
+                    vectorWeightSlider.style.background = 'linear-gradient(to right, var(--primary) ' + vectorVal + '%, var(--border) ' + vectorVal + '%)';
+                }
+                const savedRerank = localStorage.getItem('rerank');
+                if (savedRerank === 'true') {
+                    rerankCheckbox.checked = true;
+                }
+                const savedRerankTopK = localStorage.getItem('rerankTopK');
+                if (savedRerankTopK) {
+                    rerankTopKInput.value = savedRerankTopK;
+                }
+                // 根据复选框状态控制滑块
+                if (!hybridSearchCheckbox.checked) {
+                    weightSliderItem.classList.add('disabled');
+                    vectorWeightSlider.disabled = true;
+                }
+                // 根据重排序复选框状态控制Top K输入框
+                if (!rerankCheckbox.checked) {
+                    rerankTopKItem.classList.add('disabled');
+                    rerankTopKInput.disabled = true;
+                }
+            }
+
+            // 保存设置
+            function saveSettings() {
+                const topK = topKInput.value;
+                localStorage.setItem('topK', topK);
+                localStorage.setItem('hybridSearch', hybridSearchCheckbox.checked);
+                localStorage.setItem('vectorWeight', vectorWeightSlider.value);
+                localStorage.setItem('rerank', rerankCheckbox.checked);
+                localStorage.setItem('rerankTopK', rerankTopKInput.value);
+                // 显示保存成功提示
+                const saveBtn = saveSettingsBtn;
+                const originalText = saveBtn.textContent;
+                saveBtn.textContent = '已保存';
+                saveBtn.style.background = 'var(--success)';
+                setTimeout(() => {
+                    saveBtn.textContent = originalText;
+                    saveBtn.style.background = '';
+                    // 保存成功后关闭设置面板
+                    settingsPanel.classList.remove('show');
+                }, 200);
+            }
+
+            // 切换设置面板
+            settingsBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                settingsPanel.classList.toggle('show');
+            });
+
+            // 阻止设置面板内部点击冒泡
+            settingsPanel.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // 权重滑块实时更新显示
+            vectorWeightSlider.addEventListener('input', function() {
+                const vectorVal = parseInt(this.value);
+                const keywordVal = 100 - vectorVal;
+                vectorWeightPct.textContent = vectorVal + '%';
+                keywordWeightPct.textContent = keywordVal + '%';
+                this.style.background = 'linear-gradient(to right, var(--primary) ' + vectorVal + '%, var(--border) ' + vectorVal + '%)';
+            });
+            
+            // 混合检索开关控制滑块可用状态
+            hybridSearchCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    weightSliderItem.classList.remove('disabled');
+                    vectorWeightSlider.disabled = false;
+                } else {
+                    weightSliderItem.classList.add('disabled');
+                    vectorWeightSlider.disabled = true;
+                }
+            });
+            
+            // 重排序复选框状态变化
+            rerankCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    rerankTopKItem.classList.remove('disabled');
+                    rerankTopKInput.disabled = false;
+                } else {
+                    rerankTopKItem.classList.add('disabled');
+                    rerankTopKInput.disabled = true;
+                }
+            });
+            
+            // 输入框高度自动调整
+            userInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+                sendButton.disabled = this.value.trim().length === 0;
+            });
+            
+            // Markdown解析函数
+            function parseMarkdown(text) {
+                // 解析标题
+                text = text.replace(/^### (.*)$/gm, '<h3 style="font-size: 16px; font-weight: 600; margin: 12px 0 8px;">$1</h3>');
+                text = text.replace(/^## (.*)$/gm, '<h2 style="font-size: 18px; font-weight: 600; margin: 16px 0 10px;">$1</h2>');
+                text = text.replace(/^# (.*)$/gm, '<h1 style="font-size: 20px; font-weight: 700; margin: 20px 0 12px;">$1</h1>');
+                
+                // 解析粗体
+                text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                // 解析斜体
+                text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                
+                // 解析表格
+                if (text.includes('|')) {
+                    // 匹配表格行
+                    const tableRows = text.match(/^\|.*\|$/gm);
+                    if (tableRows && tableRows.length > 2) {
+                        let tableHtml = '<div style="margin: 12px 0; overflow-x: auto;"><table style="border-collapse: collapse; width: 100%; font-size: 14px;">';
+                        tableRows.forEach((row, i) => {
+                            const cells = row.split('|').filter(cell => cell !== '');
+                            tableHtml += i === 0 ? '<thead><tr>' : i === 1 ? '<tbody><tr style="border-bottom: 2px solid #e5e7eb;">' : '<tr>';
+                            cells.forEach((cell, j) => {
+                                const align = cell.trim().startsWith(':') ? (cell.trim().endsWith(':') ? 'center' : 'left') : (cell.trim().endsWith(':') ? 'right' : 'left');
+                                const tag = i === 0 ? 'th' : 'td';
+                                tableHtml += `<${tag} style="border: 1px solid #e5e7eb; padding: 8px 12px; text-align: ${align};">${cell.trim()}</${tag}>`;
+                            });
+                            tableHtml += i === 0 ? '</tr></thead>' : i === tableRows.length - 1 ? '</tr></tbody>' : '</tr>';
+                        });
+                        tableHtml += '</table></div>';
+                        // 替换表格部分
+                        text = text.replace(/^\|.*\|$/gm, '').trim();
+                        text += tableHtml;
+                    }
+                }
+                
+                // 处理用"- "分隔的列表项
+                text = text.replace(/\s*\-\s+/g, '\n- ');
+                // 解析列表
+                text = text.replace(/^\s*\-\s+(.*)$/gm, '<li>$1</li>');
+                text = text.replace(/(<li>.*<\/li>)/s, '<ul style="margin: 8px 0; padding-left: 24px;">$1</ul>');
+                // 解析换行
+                text = text.replace(/\n/g, '<br>');
+                return text;
+            }
+            
+            // 添加消息
+            function addMessage(text, isUser, searchResults = null) {
+                // 隐藏欢迎消息
+                if (welcomeMsg) welcomeMsg.style.display = 'none';
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+
+                const header = document.createElement('div');
+                header.className = 'message-header';
+                header.innerHTML = `
+                    <div class="message-avatar">${isUser ? '👤' : '🤖'}</div>
+                    <span>${isUser ? '您' : 'AI 助手'}</span>
+                    <span>·</span>
+                    <span>${new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'})}</span>
+                `;
+
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble';
+
+                if (!isUser && searchResults && searchResults.length > 0) {
+                    bubble.innerHTML = parseMarkdown(text);
+                    renderSources(bubble, searchResults);
+                } else {
+                    bubble.innerHTML = parseMarkdown(text);
+                }
+
+                messageDiv.appendChild(header);
+                messageDiv.appendChild(bubble);
+
+                typingIndicator.classList.remove('show');
+                chatMessages.insertBefore(messageDiv, typingIndicator);
+                scrollToBottom();
+            }
+
+            function renderSources(container, sources) {
+                const section = document.createElement('div');
+                section.className = 'source-section';
+
+                const toggle = document.createElement('div');
+                toggle.className = 'source-toggle';
+                toggle.innerHTML = `
+                    <span>📄</span>
+                    <span>原始文档</span>
+                    <span style="color: var(--text-tertiary); margin-left: 4px;">(${sources.length})</span>
+                    <span class="arrow">▶</span>
+                `;
+
+                const content = document.createElement('div');
+                content.className = 'source-content';
+
+                const list = document.createElement('div');
+                list.className = 'source-list';
+
+                sources.forEach((doc, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'source-item';
+                    item.innerHTML = `<span class="source-index">${idx + 1}</span>${doc}`;
+                    list.appendChild(item);
+                });
+
+                content.appendChild(list);
+
+                toggle.onclick = () => {
+                    const isActive = toggle.classList.toggle('active');
+                    content.classList.toggle('show');
+                    if (isActive) {
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                    } else {
+                        content.style.maxHeight = '0px';
+                    }
+                };
+
+                section.appendChild(toggle);
+                section.appendChild(content);
+                container.appendChild(section);
+            }
+
+            function showTyping() {
+                typingIndicator.classList.add('show');
+                scrollToBottom();
+            }
+
+            function scrollToBottom() {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            // 发送消息
+            async function sendMessage() {
+                const text = userInput.value.trim();
+                if (!text) return;
+
+                sendButton.disabled = true;
+                addMessage(text, true);
+                userInput.value = '';
+                userInput.style.height = 'auto';
+                showTyping();
+                // 显示彩虹跑马灯效果
+                if (chatArea) {
+                    chatArea.classList.add('generating');
+                }
+
+                try {
+                    // 从localStorage获取设置
+                    const topK = localStorage.getItem('topK') || 3;
+                    const hybridSearch = localStorage.getItem('hybridSearch') === 'true';
+                    const vectorWeight = localStorage.getItem('vectorWeight') || 50;
+                    const rerank = localStorage.getItem('rerank') === 'true';
+                    const rerankTopK = localStorage.getItem('rerankTopK') || 5;
+                    
+                    // 从cookie中获取session_id（用户工号）
+                    let sessionId = getCookie('session_id');
+                    if (!sessionId) {
+                        // 如果cookie中没有session_id，重定向到登录页面
+                        window.location.href = '/login/';
+                        return;
+                    }
+                    
+                    // 检测当前是否为自动路由模式
+                    const selectedOption = document.querySelector('.custom-select-option.selected');
+                    const isAutoRoute = selectedOption ? selectedOption.dataset.value === '__auto__' : false;
+
+                    const response = await fetch('/chat/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: text,
+                            top_k: parseInt(topK),
+                            hybrid_search: hybridSearch,
+                            vector_weight: parseInt(vectorWeight) / 100, // 转换为0-1之间的值
+                            rerank: rerank,
+                            rerank_top_k: parseInt(rerankTopK),
+                            auto_route: isAutoRoute,
+                            session_id: sessionId
+                        })
+                    });
+
+                    const data = await response.json();
+                    addMessage(data.response, false, data.search_results);
+                } catch (error) {
+                    addMessage('抱歉，服务暂时不可用，请稍后重试。', false);
+                } finally {
+                    sendButton.disabled = userInput.value.trim().length === 0;
+                    // 隐藏彩虹跑马灯效果
+                    if (chatArea) {
+                        chatArea.classList.remove('generating');
+                    }
+                }
+            }
+
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // 点击外部关闭设置面板
+            document.addEventListener('click', function(e) {
+                if (!settingsBtn.contains(e.target) && !settingsPanel.contains(e.target)) {
+                    settingsPanel.classList.remove('show');
+                }
+            });
+
+            // 保存设置
+            saveSettingsBtn.addEventListener('click', saveSettings);
+
+            // 检查登录状态
+            function checkLoginStatus() {
+                // 从cookie中获取session_id
+                const sessionId = getCookie('session_id');
+                if (sessionId) {
+                    userIdElement.textContent = `工号: ${sessionId}`;
+                } else {
+                    // 未登录，重定向到登录页面
+                    window.location.href = '/login/';
+                }
+            }
+
+            // 获取cookie
+            function getCookie(name) {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+                return null;
+            }
+
+            // 登出功能
+            logoutBtn.addEventListener('click', function() {
+                // 删除cookie
+                document.cookie = 'session_id=; Max-Age=0; path=/;';
+                // 重定向到登录页面
+                window.location.href = '/login/';
+            });
+
+            // 模型状态检测函数
+            async function checkModelsHealth() {
+                try {
+                    // 显示加载状态
+                    modelStatusContent.innerHTML = `
+                        <div style="display: flex; justify-content: center; align-items: center; height: 200px;">
+                            <div style="font-size: 14px; color: var(--text-secondary);">检测中...</div>
+                        </div>
+                    `;
+                    
+                    // 调用API
+                    const response = await fetch('/api/model-health?test_type=light');
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        updateModelStatus(data.data);
+                    } else {
+                        modelStatusContent.innerHTML = `
+                            <div class="model-card">
+                                <div class="model-card-header">
+                                    <div class="model-name">检测失败</div>
+                                    <div class="model-status error">错误</div>
+                                </div>
+                                <div class="model-message">${data.message || '服务器错误'}</div>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    modelStatusContent.innerHTML = `
+                        <div class="model-card">
+                            <div class="model-card-header">
+                                <div class="model-name">网络错误</div>
+                                <div class="model-status error">错误</div>
+                            </div>
+                            <div class="model-message">无法连接到服务器</div>
+                        </div>
+                    `;
+                }
+            }
+
+            function updateModelStatus(data) {
+                const models = [
+                    { key: 'chat', name: '对话模型', icon: '⚙️' },
+                    { key: 'embedding', name: '嵌入模型', icon: '⚙️' },
+                    { key: 'rerank', name: '重排模型', icon: '⚙️' },
+                    { key: 'mineru', name: 'PDF解析模型', icon: '⚙️' }
+                ];
+                
+                let html = '';
+                models.forEach(model => {
+                    const status = data[model.key];
+                    if (status) {
+                        const apiStatusClass = status.api_key_configured ? 'configured' : 'not-configured';
+                        const apiStatusText = status.api_key_configured ? '✓ API已配置' : '✗ API未配置';
+                        
+                        html += `
+                            <div class="model-card">
+                                <div class="model-card-icon ${model.key}"><span>${model.icon}</span></div>
+                                <div class="model-card-content">
+                                    <div class="model-status-container">
+                                        <div class="model-status ${status.status}">${getStatusText(status.status)}</div>
+                                    </div>
+                                    <div class="model-card-header">
+                                        <div class="model-name">${model.name}</div>
+                                    </div>
+                                    <div class="model-details">${status.model}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                modelStatusContent.innerHTML = html;
+            }
+
+            function getStatusText(status) {
+                switch(status) {
+                    case 'online': return '在线';
+                    case 'offline': return '离线';
+                    case 'error': return '错误';
+                    default: return '未知';
+                }
+            }
+
+            function clearModelStatus() {
+                modelStatusContent.innerHTML = `
+                    <div class="model-card">
+                                <div class="model-card-icon chat"><span>⚙️</span></div>
+                                <div class="model-card-content">
+                                    <div class="model-status-container">
+                                        <div class="model-status online">在线</div>
+                                    </div>
+                                    <div class="model-card-header">
+                                        <div class="model-name">对话模型</div>
+                                    </div>
+                                    <div class="model-details">${modelNames.chat || '-'}</div>
+                                </div>
+                            </div>
+                            <div class="model-card">
+                                <div class="model-card-icon embedding"><span>⚙️</span></div>
+                                <div class="model-card-content">
+                                    <div class="model-status-container">
+                                        <div class="model-status online">在线</div>
+                                    </div>
+                                    <div class="model-card-header">
+                                        <div class="model-name">嵌入模型</div>
+                                    </div>
+                                    <div class="model-details">${modelNames.embedding || '-'}</div>
+                                </div>
+                            </div>
+                            <div class="model-card">
+                                <div class="model-card-icon rerank"><span>⚙️</span></div>
+                                <div class="model-card-content">
+                                    <div class="model-status-container">
+                                        <div class="model-status online">在线</div>
+                                    </div>
+                                    <div class="model-card-header">
+                                        <div class="model-name">重排模型</div>
+                                    </div>
+                                    <div class="model-details">${modelNames.rerank || '-'}</div>
+                                </div>
+                            </div>
+                            <div class="model-card">
+                                <div class="model-card-icon mineru"><span>⚙️</span></div>
+                                <div class="model-card-content">
+                                    <div class="model-status-container">
+                                        <div class="model-status online">在线</div>
+                                    </div>
+                                    <div class="model-card-header">
+                                        <div class="model-name">PDF解析模型</div>
+                                    </div>
+                                    <div class="model-details">${modelNames.mineru || 'MinerU'}</div>
+                                </div>
+                            </div>
+                `;
+            }
+
+            // 加载文件列表
+            async function loadFiles() {
+                try {
+                    const response = await fetch('/documents/');
+                    const data = await response.json();
+                    
+                    if (data.message === '获取文档列表成功') {
+                        // 清空文件列表
+                        fileList.innerHTML = '';
+                        
+                        // 添加每个文件到列表
+                        data.files.forEach(file => {
+                            const item = createFileItem(file.name, file.size);
+                            item.classList.remove('processing');
+                            item.classList.add('success');
+                            const statusEl = item.querySelector('.file-status');
+                            statusEl.className = 'file-status success';
+                            statusEl.innerHTML = '✓ 已上传';
+                            const progressBar = item.querySelector('.progress-bar');
+                            if (progressBar) progressBar.style.display = 'none';
+                            fileList.appendChild(item);
+                        });
+                        
+                        // 绑定删除按钮事件
+                        bindDeleteEvents();
+                    }
+                } catch (error) {
+                    console.error('加载文件列表失败:', error);
+                }
+            }
+
+            // 绑定模型状态按钮事件
+            if (checkModelsBtn) {
+                checkModelsBtn.addEventListener('click', checkModelsHealth);
+            }
+            
+            if (clearStatusBtn) {
+                clearStatusBtn.addEventListener('click', clearModelStatus);
+            }
+            
+            // 文件上传
+            function createFileItem(name, size) {
+                const div = document.createElement('div');
+                div.className = 'file-item processing';
+                div.innerHTML = `
+                    <div class="file-icon-small">📄</div>
+                    <div class="file-details">
+                        <div class="file-name">${name}</div>
+                        <div class="file-meta">
+                            <span>${(size / 1024).toFixed(1)} KB</span>
+                            <span class="file-status processing">● 上传中</span>
+                        </div>
+                        <div class="progress-bar show">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="delete-btn" data-filename="${name}" title="删除文档">×</button>
+                    </div>
+                `;
+                return div;
+            }
+            
+            async function uploadFile(file) {
+                const item = createFileItem(file.name, file.size);
+                fileList.insertBefore(item, fileList.firstChild);
+
+                const progressFill = item.querySelector('.progress-fill');
+                const statusEl = item.querySelector('.file-status');
+
+                // 模拟进度
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    if (progress > 90) progress = 90;
+                    progressFill.style.width = progress + '%';
+                }, 200);
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/document_upload/', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    clearInterval(interval);
+                    progressFill.style.width = '100%';
+
+                    if (response.ok) {
+                        item.classList.remove('processing');
+                        item.classList.add('success');
+                        statusEl.className = 'file-status success';
+                        statusEl.innerHTML = '✓ 上传成功';
+                        setTimeout(() => {
+                            progressFill.parentElement.style.display = 'none';
+                            // 上传成功后移除文件项
+                            setTimeout(() => {
+                                if (item.parentNode) {
+                                    item.parentNode.removeChild(item);
+                                }
+                            }, 1000);
+                        }, 500);
+                        loadCollections();
+                        // 添加到文档管理器
+                        addDocumentToManager(file.name, file.size);
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                } catch (error) {
+                    clearInterval(interval);
+                    item.classList.remove('processing');
+                    item.classList.add('error');
+                    statusEl.className = 'file-status error';
+                    statusEl.innerHTML = '✗ 上传失败';
+                }
+            }
+            
+            // 拖拽事件
+            if (dropzone) {
+                dropzone.addEventListener('click', () => fileInput.click());
+                dropzone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropzone.classList.add('dragover');
+                });
+                dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+                dropzone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove('dragover');
+                    Array.from(e.dataTransfer.files).forEach(uploadFile);
+                });
+            }
+            
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    Array.from(e.target.files).forEach(uploadFile);
+                    fileInput.value = '';
+                });
+            }
+
+            // 加载聊天历史
+            async function loadChatHistory() {
+                const sessionId = getCookie('session_id');
+                if (!sessionId) return;
+
+                try {
+                    const response = await fetch(`/chat_history/?session_id=${sessionId}`);
+                    const data = await response.json();
+
+                    if (data.messages && data.messages.length > 0) {
+                        // 隐藏欢迎消息
+                        if (welcomeMsg) welcomeMsg.style.display = 'none';
+
+                        // 遍历历史消息并显示
+                        data.messages.forEach(msg => {
+                            const isUser = msg.type === 'human';
+                            addMessage(msg.content, isUser);
+                        });
+                        console.log(`已加载 ${data.messages.length} 条历史消息`);
+                    }
+                } catch (error) {
+                    console.error('加载聊天历史失败:', error);
+                }
+            }
+
+            // 初始化
+            console.log('开始初始化');
+            checkLoginStatus();
+            
+            // 只有在登录状态下才加载集合和检测模型
+            // 因为 checkLoginStatus 可能会重定向到登录页面
+            const sessionId = getCookie('session_id');
+            console.log('登录状态检查，sessionId:', sessionId);
+            if (sessionId) {
+                console.log('已登录，开始加载数据');
+                loadChatHistory();
+                loadCollections();
+                loadSettings();
+                userInput.focus();
+                
+                // 页面加载时自动检测一次
+                fetchModelNames().then(() => checkModelsHealth());
+        } else {
+            console.log('未登录，跳过加载');
+        }
+
+        // 初始化使用指南折叠功能
+            const collapsibleHeader = document.querySelector('.collapsible-header');
+            const infoCardContent = document.querySelector('.info-card-content');
+            
+            if (collapsibleHeader && infoCardContent) {
+                // 默认折叠
+                collapsibleHeader.classList.add('collapsed');
+                infoCardContent.classList.add('collapsed');
+                
+                // 添加点击事件
+                collapsibleHeader.addEventListener('click', function() {
+                    this.classList.toggle('collapsed');
+                    infoCardContent.classList.toggle('collapsed');
+                });
+            }
+
+            // 文档管理器功能
+            const createFolderBtn = document.getElementById('create-folder-btn');
+            const folderList = document.getElementById('folder-list');
+            const documentList = document.getElementById('document-list');
+
+            // 存储文件夹和文档数据
+            let folders = JSON.parse(localStorage.getItem('documentFolders')) || [];
+            let documents = JSON.parse(localStorage.getItem('documents')) || [];
+            let currentFolder = null;
+
+            // 从服务器加载文档列表
+            async function loadDocumentsFromServer() {
+                try {
+                    const response = await fetch('/documents/');
+                    const data = await response.json();
+                    
+                    if (data.message === '获取文档列表成功') {
+                        // 保存现有的文档文件夹组织
+                        const existingDocsMap = new Map();
+                        documents.forEach(doc => {
+                            existingDocsMap.set(doc.name, doc.folder);
+                        });
+                        
+                        // 清空现有文档
+                        documents = [];
+                        // 添加服务器返回的文档，保留文件夹组织
+                        data.files.forEach(file => {
+                            const existingFolder = existingDocsMap.get(file.name);
+                            documents.push({
+                                name: file.name,
+                                size: `${(file.size / 1024).toFixed(1)} KB`,
+                                folder: existingFolder || null
+                            });
+                        });
+                        saveData();
+                        renderDocuments();
+                    }
+                } catch (error) {
+                    console.error('加载文档列表失败:', error);
+                }
+            }
+
+            // 初始化文档管理器
+            async function initDocumentManager() {
+                // 默认选中通用知识库
+                currentFolder = null;
+                renderFolders();
+                await loadDocumentsFromServer();
+                renderDocuments();
+                
+                // 设置当前选中的知识库文档项为选中状态
+                const currentCollectionName = document.getElementById('custom-select-value').textContent;
+                if (currentCollectionName) {
+                    const docItems = document.querySelectorAll('.document-item');
+                    docItems.forEach(item => {
+                        const docName = item.dataset.document;
+                        if (docName === currentCollectionName) {
+                            item.classList.add('selected');
+                        }
+                    });
+                }
+            }
+
+            // 渲染文件夹列表
+            function renderFolders() {
+                folderList.innerHTML = '';
+                
+                // 添加通用知识库
+                const isAutoRouteMode = localStorage.getItem('auto_route_mode') === 'true';
+                const generalKnowledgeBaseItem = document.createElement('div');
+                generalKnowledgeBaseItem.className = `folder-item ${!isAutoRouteMode && currentFolder === null ? 'active' : ''}`;
+                generalKnowledgeBaseItem.dataset.folder = 'general';
+                generalKnowledgeBaseItem.innerHTML = `
+                    <span>📚</span>
+                    <span class="folder-name">通用知识库</span>
+                `;
+                folderList.appendChild(generalKnowledgeBaseItem);
+
+                // 添加通用知识库的文档列表容器
+                const generalDocumentListContainer = document.createElement('div');
+                generalDocumentListContainer.className = `document-list-container ${currentFolder === null ? 'show' : ''}`;
+                generalDocumentListContainer.dataset.folder = 'general';
+                generalDocumentListContainer.innerHTML = `<div class="document-list" id="document-list-general"></div>`;
+                folderList.appendChild(generalDocumentListContainer);
+
+                // 添加通用知识库点击事件
+                generalKnowledgeBaseItem.addEventListener('click', async function(e) {
+                    if (!e.target.closest('.folder-actions')) {
+                        currentFolder = null;
+                        // 切换到demo知识库，关闭路由模式
+                        localStorage.setItem('auto_route_mode', 'false');
+                        try {
+                            const response = await fetch('/collection/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ collection_name: 'demo' })
+                            });
+                            
+                            if (response.ok) {
+                                // 更新下拉菜单显示
+                                document.getElementById('custom-select-value').textContent = '通用知识库（默认）';
+                                // 重新加载知识库列表
+                                await loadCollections();
+                                // 重置文档项的选中状态
+                                const docItems = document.querySelectorAll('.document-item');
+                                docItems.forEach(item => {
+                                    item.classList.remove('selected');
+                                });
+                            } else {
+                                console.error('切换知识库失败');
+                            }
+                        } catch (error) {
+                            console.error('切换知识库失败:', error);
+                        }
+                        renderFolders();
+                    }
+                });
+
+                // 添加自动路由检索选项
+                const autoRouteItem = document.createElement('div');
+                autoRouteItem.className = `folder-item ${isAutoRouteMode ? 'active' : ''}`;
+                autoRouteItem.dataset.folder = '__auto__';
+                autoRouteItem.innerHTML = `
+                    <span>🔍</span>
+                    <span class="folder-name">自动路由检索</span>
+                `;
+                folderList.appendChild(autoRouteItem);
+
+                autoRouteItem.addEventListener('click', async function(e) {
+                    if (!e.target.closest('.folder-actions')) {
+                        localStorage.setItem('auto_route_mode', 'true');
+                        console.log('已切换到自动路由检索模式');
+                        // 更新下拉菜单显示
+                        document.getElementById('custom-select-value').textContent = '🔍 自动路由检索';
+                        // 重置所有文档项的选中状态
+                        document.querySelectorAll('.document-item').forEach(item => {
+                            item.classList.remove('selected');
+                        });
+                        // 重新加载知识库列表（会重新渲染下拉菜单）
+                        await loadCollections();
+                        // 清除侧边栏选中状态
+                        currentFolder = null;
+                        renderFolders();
+                    }
+                });
+
+                // 渲染用户创建的文件夹
+                folders.forEach(folder => {
+                    const folderItem = document.createElement('div');
+                    folderItem.className = `folder-item ${currentFolder === folder ? 'active' : ''}`;
+                    folderItem.dataset.folder = folder;
+                    folderItem.innerHTML = `
+                        <span>📁</span>
+                        <span class="folder-name">${folder}</span>
+                        <div class="folder-actions">
+                            <button class="rename-folder" title="重命名">✏️</button>
+                            <button class="delete-folder" title="删除">🗑️</button>
+                        </div>
+                    `;
+                    folderList.appendChild(folderItem);
+
+                    // 添加文档列表容器
+                    const documentListContainer = document.createElement('div');
+                    documentListContainer.className = `document-list-container ${currentFolder === folder ? 'show' : ''}`;
+                    documentListContainer.dataset.folder = folder;
+                    documentListContainer.innerHTML = `<div class="document-list" id="document-list-${folder}"></div>`;
+                    folderList.appendChild(documentListContainer);
+
+                    // 添加文件夹点击事件
+                    folderItem.addEventListener('click', function(e) {
+                        if (!e.target.closest('.folder-actions')) {
+                            // 如果点击的是当前选中的文件夹，则取消选中
+                            if (currentFolder === folder) {
+                                currentFolder = null;
+                            } else {
+                                currentFolder = folder;
+                            }
+                            renderFolders();
+                        }
+                    });
+
+                    // 添加重命名和删除事件
+                    const renameBtn = folderItem.querySelector('.rename-folder');
+                    const deleteBtn = folderItem.querySelector('.delete-folder');
+
+                    renameBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        renameFolder(folder);
+                    });
+
+                    deleteBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        deleteFolder(folder);
+                    });
+
+                    // 添加拖拽事件
+                    folderItem.addEventListener('dragover', function(e) {
+                        e.preventDefault();
+                        this.classList.add('drag-over');
+                    });
+
+                    folderItem.addEventListener('dragleave', function() {
+                        this.classList.remove('drag-over');
+                    });
+
+                    folderItem.addEventListener('drop', function(e) {
+                        e.preventDefault();
+                        this.classList.remove('drag-over');
+                        const documentName = e.dataTransfer.getData('text/plain');
+                        moveDocumentToFolder(documentName, folder);
+                    });
+                });
+                
+                // 渲染当前文件夹的文档
+                renderDocuments();
+            }
+
+            // 渲染文档列表
+            function renderDocuments() {
+                // 清空所有文档列表
+                const allDocumentLists = document.querySelectorAll('.document-list');
+                allDocumentLists.forEach(list => {
+                    list.innerHTML = '';
+                });
+                
+                // 获取当前文件夹的文档列表容器
+                let currentDocumentList;
+                let folderDocs;
+                
+                if (currentFolder === null) {
+                    // 通用知识库
+                    currentDocumentList = document.getElementById('document-list-general');
+                    folderDocs = documents.filter(doc => doc.folder === null);
+                } else {
+                    // 用户创建的文件夹
+                    currentDocumentList = document.getElementById(`document-list-${currentFolder}`);
+                    folderDocs = documents.filter(doc => doc.folder === currentFolder);
+                }
+                
+                if (currentDocumentList) {
+                    folderDocs.forEach(doc => {
+                        const docItem = document.createElement('div');
+                        docItem.className = 'document-item';
+                        docItem.dataset.document = doc.name;
+                        docItem.draggable = true;
+                        docItem.innerHTML = `
+                            <span class="document-icon">📄</span>
+                            <div class="document-details">
+                                <div class="document-name">${doc.name}</div>
+                                <div class="document-meta">${doc.size}</div>
+                            </div>
+                            <div class="document-actions">
+                                <button class="delete-document" title="删除">🗑️</button>
+                            </div>
+                        `;
+                        currentDocumentList.appendChild(docItem);
+
+                        // 添加拖拽事件
+                        docItem.addEventListener('dragstart', function(e) {
+                            this.classList.add('dragging');
+                            e.dataTransfer.setData('text/plain', doc.name);
+                        });
+
+                        docItem.addEventListener('dragend', function() {
+                            this.classList.remove('dragging');
+                        });
+
+                        // 添加删除事件
+                        const deleteBtn = docItem.querySelector('.delete-document');
+                        deleteBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            deleteDocument(doc.name);
+                        });
+
+                        // 添加点击事件，切换到该知识库
+                        docItem.addEventListener('click', async function(e) {
+                            if (!e.target.closest('.document-actions')) {
+                                // 切换到该知识库
+                                const docName = doc.name;
+                                
+                                localStorage.setItem('auto_route_mode', 'false');
+                                
+                                // 调用切换知识库的函数
+                                const customSelectValue = document.getElementById('custom-select-value');
+                                const customSelectDropdown = document.getElementById('custom-select-dropdown');
+                                const customSelect = document.getElementById('custom-collection-select');
+                                
+                                if (customSelectValue && customSelectDropdown && customSelect) {
+                                    // 更新显示值
+                                    customSelectValue.textContent = docName;
+                                    
+                                    // 同步更新下拉菜单选项的选中状态
+                                    document.querySelectorAll('.custom-select-option').forEach(opt => {
+                                        opt.classList.remove('selected');
+                                    });
+                                    const matchOption = Array.from(document.querySelectorAll('.custom-select-option')).find(
+                                        opt => opt.dataset.value === docName
+                                    );
+                                    if (matchOption) {
+                                        matchOption.classList.add('selected');
+                                    }
+                                    
+                                    // 关闭下拉菜单
+                                    customSelect.classList.remove('active');
+                                    customSelectDropdown.classList.remove('show');
+                                    
+                                    // 发送切换请求
+                                    try {
+                                        await fetch('/collection/', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ collection_name: docName })
+                                        });
+                                        console.log('切换知识库成功');
+                                        
+                                        // renderFolders会重建文档项，先保存文档名，highlight放到后面
+                                        const selectedDocName = docName;
+                                        renderFolders();
+                                        // 在重建后的文档项中设置高亮
+                                        document.querySelectorAll('.document-item').forEach(item => {
+                                            item.classList.remove('selected');
+                                        });
+                                        const newDocItem = Array.from(document.querySelectorAll('.document-item')).find(
+                                            item => item.dataset.document === selectedDocName
+                                        );
+                                        if (newDocItem) newDocItem.classList.add('selected');
+                                    } catch (e) {
+                                        console.error('Failed to switch collection:', e);
+                                    }
+                                }
+                            }
+                        });
+                    });
+                }
+            }
+
+            // 创建文件夹
+            function createFolder() {
+                const folderName = prompt('请输入文件夹名称:');
+                if (folderName && folderName.trim() && !folders.includes(folderName.trim())) {
+                    folders.push(folderName.trim());
+                    saveData();
+                    renderFolders();
+                }
+            }
+
+            // 重命名文件夹
+            function renameFolder(oldName) {
+                const newName = prompt('请输入新的文件夹名称:', oldName);
+                if (newName && newName.trim() && newName.trim() !== oldName && !folders.includes(newName.trim())) {
+                    const index = folders.indexOf(oldName);
+                    if (index !== -1) {
+                        folders[index] = newName.trim();
+                        // 更新文件夹中的文档
+                        documents.forEach(doc => {
+                            if (doc.folder === oldName) {
+                                doc.folder = newName.trim();
+                            }
+                        });
+                        if (currentFolder === oldName) {
+                            currentFolder = newName.trim();
+                        }
+                        saveData();
+                        renderFolders();
+                        renderDocuments();
+                    }
+                }
+            }
+
+            // 删除文件夹
+            function deleteFolder(folderName) {
+                if (folderName === '默认文件夹') {
+                    alert('默认文件夹不能删除');
+                    return;
+                }
+                if (confirm(`确定要删除文件夹 "${folderName}" 吗？`)) {
+                    folders = folders.filter(folder => folder !== folderName);
+                    // 将文件夹中的文档移到默认文件夹
+                    documents.forEach(doc => {
+                        if (doc.folder === folderName) {
+                            doc.folder = '默认文件夹';
+                        }
+                    });
+                    if (currentFolder === folderName) {
+                        currentFolder = '默认文件夹';
+                    }
+                    saveData();
+                    renderFolders();
+                    renderDocuments();
+                }
+            }
+
+            // 删除文档
+            async function deleteDocument(docName) {
+                if (confirm(`确定要删除文档 "${docName}" 吗？此操作将删除本地文件和向量数据库中的相关数据。`)) {
+                    try {
+                        // 向后端发送删除请求
+                        const response = await fetch(`/document/?filename=${encodeURIComponent(docName)}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.message === '文档删除成功') {
+                                // 从前端数据中删除文档
+                                documents = documents.filter(doc => doc.name !== docName);
+                                saveData();
+                                renderDocuments();
+                                // 重新加载知识库列表
+                                await loadCollections();
+                                alert('文档删除成功！');
+                            } else {
+                                throw new Error(data.message || '删除失败');
+                            }
+                        } else {
+                            throw new Error('删除失败');
+                        }
+                    } catch (error) {
+                        console.error('删除文档失败:', error);
+                        alert('删除文档失败，请重试: ' + error.message);
+                    }
+                }
+            }
+
+            // 移动文档到文件夹
+            function moveDocumentToFolder(docName, folderName) {
+                const doc = documents.find(doc => doc.name === docName);
+                if (doc) {
+                    doc.folder = folderName;
+                    saveData();
+                    renderDocuments();
+                }
+            }
+
+            // 保存数据到本地存储
+            function saveData() {
+                localStorage.setItem('documentFolders', JSON.stringify(folders));
+                localStorage.setItem('documents', JSON.stringify(documents));
+            }
+
+            // 监听文件上传成功事件，添加到文档列表
+            function addDocumentToManager(fileName, fileSize) {
+                const existingDoc = documents.find(doc => doc.name === fileName);
+                if (!existingDoc) {
+                    documents.push({
+                        name: fileName,
+                        size: `${(fileSize / 1024).toFixed(1)} KB`,
+                        folder: null
+                    });
+                    saveData();
+                    renderDocuments();
+                }
+            }
+
+            // 绑定创建文件夹按钮事件
+            if (createFolderBtn) {
+                createFolderBtn.addEventListener('click', createFolder);
+            }
+
+            // 初始化文档管理器
+            (async function() {
+                await initDocumentManager();
+            })();
+        });
+    </script>
+</body>
+</html>

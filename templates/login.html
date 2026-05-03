@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 云存储产品智能知识库系统</title>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <style>
+        :root {
+            --primary: #007DFF;
+            --primary-dark: #0056CC;
+            --primary-light: #E6F2FF;
+            --secondary: #7B68EE;
+            --success: #00C853;
+            --warning: #FF9500;
+            --danger: #FF3B30;
+            --bg-base: #F5F7FA;
+            --bg-card: #ffffff;
+            --bg-card-glass: rgba(255, 255, 255, 0.92);
+            --text-primary: #1D2129;
+            --text-secondary: #4E5969;
+            --text-tertiary: #86909C;
+            --border: rgba(0, 0, 0, 0.06);
+            --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.04);
+            --shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1);
+            --radius-sm: 12px;
+            --radius: 16px;
+            --radius-md: 20px;
+            --radius-lg: 24px;
+            --radius-xl: 28px;
+            --radius-full: 9999px;
+            --blur-sm: 12px;
+            --blur-md: 20px;
+            --blur-lg: 30px;
+            --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #F5F7FA 0%, #E8EDF2 50%, #F0F4F8 100%);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .login-container {
+            background: var(--bg-card-glass);
+            backdrop-filter: blur(var(--blur-lg));
+            -webkit-backdrop-filter: blur(var(--blur-lg));
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            padding: 48px;
+            width: 100%;
+            max-width: 420px;
+            border: 1px solid var(--border);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .brand-logo {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 26px;
+            font-weight: 700;
+            box-shadow: var(--shadow-md);
+        }
+
+        .brand-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .login-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-input {
+            padding: 14px 18px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            font-size: 16px;
+            color: var(--text-primary);
+            background: var(--bg-card);
+            transition: all var(--transition-fast);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 125, 255, 0.12);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .form-error {
+            font-size: 12px;
+            color: var(--danger);
+            min-height: 16px;
+        }
+
+        .login-button {
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            margin-top: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .login-button:hover {
+            background: var(--primary-dark);
+            box-shadow: var(--shadow-md);
+        }
+
+        .login-button:active {
+            transform: scale(0.98);
+        }
+
+        .login-button:disabled {
+            background: var(--text-tertiary);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .login-footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 0 20px;
+                padding: 32px 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="brand">
+                <div class="brand-logo">☁️</div>
+                <div class="brand-name">Advance RAG</div>
+            </div>
+            <h1 class="login-title">用户登录</h1>
+            <p class="login-subtitle">请输入您的工号以登录系统</p>
+        </div>
+        
+        <form class="login-form" id="login-form">
+            <div class="form-group">
+                <label class="form-label" for="employee-id">工号</label>
+                <input 
+                    type="text" 
+                    id="employee-id" 
+                    class="form-input" 
+                    placeholder="请输入您的工号" 
+                    required
+                >
+                <div class="form-error" id="error-message"></div>
+            </div>
+            
+            <button type="submit" class="login-button" id="login-button">
+                登录
+            </button>
+        </form>
+        
+        <div class="login-footer">
+            <p>© 2026 云存储产品智能知识库系统</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('login-form');
+            const employeeIdInput = document.getElementById('employee-id');
+            const errorMessage = document.getElementById('error-message');
+            const loginButton = document.getElementById('login-button');
+
+            // 表单提交处理
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const employeeId = employeeIdInput.value.trim();
+                
+                if (!employeeId) {
+                    errorMessage.textContent = '请输入工号';
+                    return;
+                }
+
+                // 显示加载状态
+                loginButton.disabled = true;
+                loginButton.textContent = '登录中...';
+                errorMessage.textContent = '';
+
+                try {
+                    const response = await fetch('/login/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({ employee_id: employeeId })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // 登录成功，跳转到聊天页面
+                        window.location.href = '/chat/';
+                    } else {
+                        // 登录失败
+                        errorMessage.textContent = data.detail || '登录失败，请重试';
+                    }
+                } catch (error) {
+                    console.error('登录错误:', error);
+                    errorMessage.textContent = '网络错误，请检查网络连接';
+                } finally {
+                    // 恢复按钮状态
+                    loginButton.disabled = false;
+                    loginButton.textContent = '登录';
+                }
+            });
+
+            // 输入事件，清除错误信息
+            employeeIdInput.addEventListener('input', function() {
+                errorMessage.textContent = '';
+            });
+
+            // 自动聚焦输入框
+            employeeIdInput.focus();
+        });
+    </script>
+</body>
+</html>
