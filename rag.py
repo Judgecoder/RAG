@@ -146,7 +146,7 @@ class RAGService:
             retrieved_docs: 检索到的相关文档片段列表
         """
         # =========================================================================
-        # 阶段1：判断是否启用自动路由
+        # 阶段0：判断是否启用自动路由
         # =========================================================================
         use_route = auto_route if auto_route is not None else self.auto_route
         coll_name = collection_name or self.collection_name
@@ -161,7 +161,7 @@ class RAGService:
         retrieved_docs = []
 
         # =========================================================================
-        # 阶段2：检索知识库
+        # 第1步：检索知识库
         # =========================================================================
         if use_route:
             # ---------------------------------------------------------------------
@@ -181,7 +181,7 @@ class RAGService:
                 )
                 retrieved_docs = search_results['documents'][0]
             else:
-                # 1阶段：路由决策
+                # 阶段1：路由决策
                 logger.info(f'【路由】可用知识库: {available}')
                 candidates = self.route_index.route(user_query, strategy="hybrid", top_k=3)
 
@@ -198,7 +198,7 @@ class RAGService:
                 else:
                     logger.info(f'【路由】候选知识库: {candidates}')
 
-                    # 2阶段：在候选知识库中精准检索
+                    # 阶段2：在候选知识库中精准检索
                     # 每个候选集合都检索 n_results 条，确保每个知识库的信息足够
                     all_docs = []
                     seen_content = set()
@@ -251,7 +251,7 @@ class RAGService:
             logger.info(f'\n[{i}] {doc[:500]}...')
         
         # -------------------------------------------------------------------------
-        # 阶段3：重排序（Rerank）
+        # 第1.1步：重排序（Rerank）
         # -------------------------------------------------------------------------
         if self.rerank and not _rerank_applied:
             # 对检索到的文档进行重排序（非路由模式，或路由回退到默认集合的情况）
@@ -267,7 +267,7 @@ class RAGService:
         logger.info('-' * 100)
 
         # -------------------------------------------------------------------------
-        # 阶段4：构建增强Prompt
+        # 第2步：构建增强Prompt
         # -------------------------------------------------------------------------
         logger.info('\n>>> 第2步：构建Prompt（提示词）...')
         
@@ -372,14 +372,14 @@ class RAGService:
                 logger.error(f'\n>>> 加载历史对话失败: {str(e)}')
         
         # -------------------------------------------------------------------------
-        # 阶段5：调用大语言模型生成答案
+        # 第3步：调用大语言模型生成答案
         # -------------------------------------------------------------------------
         logger.info('\n>>> 第3步：调用AI模型生成答案...')
         
         # 调用get_completion函数，把Prompt发给AI
         if coll_name == 'demo' and not use_route:
             # 对于demo集合且非路由模式，直接将用户问题交给LLM，不使用提示词模板
-            client = get_huayan_model_client()
+            client = get_ds_model_client()
             response = client.invoke(user_query)
             if hasattr(response, 'content'):
                 response = response.content

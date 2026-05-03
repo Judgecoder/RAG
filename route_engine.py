@@ -26,7 +26,7 @@ from datetime import datetime
 from typing import List, Dict, Tuple
 
 from logger import logger
-from models import get_huayan_model_client, get_huayan_embeddings
+from models import get_ds_model_client, get_ali_embeddings
 
 
 ROUTE_PROMPT_TEMPLATE = """你是一个知识库路由专家。请根据用户的问题，从以下知识库中选出最相关的 {top_k} 个。
@@ -99,13 +99,13 @@ class DocumentRouterIndex:
     @property
     def llm_client(self):
         if self._llm_client is None:
-            self._llm_client = get_huayan_model_client()
+            self._llm_client = get_ds_model_client()
         return self._llm_client
 
     @property
     def embedding_model(self):
         if self._embedding_model is None:
-            self._embedding_model = get_huayan_embeddings()
+            self._embedding_model = get_ali_embeddings()
         return self._embedding_model
 
     def build_description(self, collection_name: str, filepath: str, summaries: List[str]):
@@ -157,16 +157,16 @@ class DocumentRouterIndex:
         """
         prompt = f"""基于以下文档内容，生成：
 
-        1. 一段简洁的文档概述（50字以内），说明文档的核心主题
-        2. 3-5个主题标签，用逗号分隔
+1. 一段简洁的文档概述（50字以内），说明文档的核心主题
+2. 3-5个主题标签，用逗号分隔
 
-        文档名称：{file_name}
-        文档内容摘要：
-        {content[:2000]}
+文档名称：{file_name}
+文档内容摘要：
+{content[:2000]}
 
-        输出格式（严格按此格式）：
-        概述：xxx
-        标签：标签1,标签2,标签3"""
+输出格式（严格按此格式）：
+概述：xxx
+标签：标签1,标签2,标签3"""
 
         response = self.llm_client.invoke(prompt)
         text = response.content if hasattr(response, 'content') else str(response)

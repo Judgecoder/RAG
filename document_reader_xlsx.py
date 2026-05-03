@@ -92,8 +92,7 @@ class XLSXDocumentReader(DocumentReaderBase):
             
             # 按行进行分块，每行成为一个单独的块
             documents = []
-            # chunk_size设置较大，确保每个块包含完整的一行信息
-            chunk_size = 2000
+            chunk_size = 1000
             
             # 遍历每一行
             for index, row in df.iterrows():
