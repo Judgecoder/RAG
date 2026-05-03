@@ -2187,7 +2187,7 @@
                             <div class="model-card-header">
                                 <div class="model-name">对话模型</div>
                             </div>
-                            <div class="model-details">qwen3.5-flash</div>
+                            <div class="model-details">-</div>
                         </div>
                     </div>
                     <div class="model-card">
@@ -2199,7 +2199,7 @@
                             <div class="model-card-header">
                                 <div class="model-name">嵌入模型</div>
                             </div>
-                            <div class="model-details">text-embedding-v4</div>
+                            <div class="model-details">-</div>
                         </div>
                     </div>
                     <div class="model-card">
@@ -2211,7 +2211,7 @@
                             <div class="model-card-header">
                                 <div class="model-name">重排模型</div>
                             </div>
-                            <div class="model-details">gte-rerank-v2</div>
+                            <div class="model-details">-</div>
                         </div>
                     </div>
                     <div class="model-card">
@@ -2223,7 +2223,7 @@
                             <div class="model-card-header">
                                 <div class="model-name">PDF解析模型</div>
                             </div>
-                            <div class="model-details">MinerU</div>
+                            <div class="model-details">-</div>
                         </div>
                     </div>
                 </div>
@@ -2472,6 +2472,19 @@
             const modelStatusContent = document.getElementById('model-status-content');
             const checkModelsBtn = document.getElementById('check-models');
             const clearStatusBtn = document.getElementById('clear-status');
+            
+            // 动态模型名称（从 models.py 获取）
+            let modelNames = {};
+
+            async function fetchModelNames() {
+                try {
+                    const response = await fetch('/api/model-names');
+                    const data = await response.json();
+                    modelNames = data;
+                } catch (e) {
+                    modelNames = { chat: '-', embedding: '-', rerank: '-', mineru: 'MinerU' };
+                }
+            }
             
             // 聊天区域元素
             const chatArea = document.getElementById('chat-area');
@@ -2937,7 +2950,7 @@
                                     <div class="model-card-header">
                                         <div class="model-name">对话模型</div>
                                     </div>
-                                    <div class="model-details">qwen3.5-flash</div>
+                                    <div class="model-details">${modelNames.chat || '-'}</div>
                                 </div>
                             </div>
                             <div class="model-card">
@@ -2949,7 +2962,7 @@
                                     <div class="model-card-header">
                                         <div class="model-name">嵌入模型</div>
                                     </div>
-                                    <div class="model-details">text-embedding-v4</div>
+                                    <div class="model-details">${modelNames.embedding || '-'}</div>
                                 </div>
                             </div>
                             <div class="model-card">
@@ -2961,7 +2974,7 @@
                                     <div class="model-card-header">
                                         <div class="model-name">重排模型</div>
                                     </div>
-                                    <div class="model-details">gte-rerank-v2</div>
+                                    <div class="model-details">${modelNames.rerank || '-'}</div>
                                 </div>
                             </div>
                             <div class="model-card">
@@ -2973,7 +2986,7 @@
                                     <div class="model-card-header">
                                         <div class="model-name">PDF解析模型</div>
                                     </div>
-                                    <div class="model-details">MinerU</div>
+                                    <div class="model-details">${modelNames.mineru || 'MinerU'}</div>
                                 </div>
                             </div>
                 `;
@@ -3161,7 +3174,7 @@
                 userInput.focus();
                 
                 // 页面加载时自动检测一次
-            setTimeout(checkModelsHealth, 1000);
+                fetchModelNames().then(() => checkModelsHealth());
         } else {
             console.log('未登录，跳过加载');
         }

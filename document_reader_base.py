@@ -10,11 +10,6 @@
 2. 类型安全：通过ABC确保子类实现必要方法
 3. 易于扩展：添加新文档类型只需继承基类
 4. 统一错误处理：基类提供标准的异常处理机制
-
-【使用示例】
-    from document_reader_word import WordDocumentReader
-    reader = WordDocumentReader()
-    documents = reader.read_document("文档.docx")
 ================================================================================
 """
 

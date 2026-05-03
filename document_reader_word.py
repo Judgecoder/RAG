@@ -17,9 +17,9 @@ Word文档读取器模块 (word_document_reader.py)
 ================================================================================
 """
 
-import os
-from langchain_text_splitters import RecursiveCharacterTextSplitter  # 文本分割工具
-from langchain_community.document_loaders import Docx2txtLoader  # 文本加载器
+from docx import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import Docx2txtLoader
 
 from document_reader_base import DocumentReaderBase
 from logger import logger

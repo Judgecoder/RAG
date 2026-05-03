@@ -5,7 +5,7 @@
 
 【功能】
 - 统一处理不同类型文档的加载、分割、摘要生成和索引
-- 支持PDF和Word文档
+- 支持PDF、Word、CSV、Markdown、Excel等文档格式
 - 使用摘要索引和多向量检索器提升检索质量
 ================================================================================
 """
@@ -29,20 +29,8 @@ from document_reader_word import WordDocumentReader
 from document_reader_csv import CSVDocumentReader
 from document_reader_md import MDDocumentReader
 from document_reader_xlsx import XLSXDocumentReader
-from models import get_ali_embeddings, get_ds_model_client
+from models import get_huayan_model_client, get_huayan_embeddings
 
-
-#!/usr/bin/env python3
-"""
-================================================================================
-文档处理类模块 (document_processor.py)
-
-【功能】
-- 统一处理不同类型文档的加载、分割、摘要生成和索引
-- 支持PDF和Word文档
-- 使用摘要索引和多向量检索器提升检索质量
-================================================================================
-"""
 
 def clean_collection_name(filename: str) -> str:
     """
@@ -99,8 +87,8 @@ class DocumentProcessor:
     """
 
     def __init__(self):
-        self.client = get_ds_model_client()
-        self.embeddings_model = get_ali_embeddings()
+        self.client = get_huayan_model_client()
+        self.embeddings_model = get_huayan_embeddings()
         self.pdf_reader = PDFDocumentReader()
         self.word_reader = WordDocumentReader()
         self.csv_reader = CSVDocumentReader()
@@ -283,4 +271,3 @@ if __name__ == '__main__':
 
     processor = DocumentProcessor()
     logger.info(f"支持的扩展名: {processor.get_supported_extensions()}")
-

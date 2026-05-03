@@ -1,6 +1,6 @@
 """
 ================================================================================
-Web应用入口文件 (app_fastapi.py) - FastAPI版本
+Web应用入口文件
 
 【作用】
 这个文件是整个系统的"大门"，负责：
@@ -8,14 +8,6 @@ Web应用入口文件 (app_fastapi.py) - FastAPI版本
 2. 处理文档上传
 3. 处理用户提问
 4. 返回网页给浏览器
-
-【FastAPI是什么】
-FastAPI是一个现代、快速（高性能）的Python Web框架，用于构建API和Web应用。
-它具有自动生成API文档、数据验证、异步支持等特性。
-
-【如何运行】
-在命令行输入: uvicorn app_fastapi:app --reload --host 127.0.0.1 --port 5000
-然后打开浏览器访问: http://<服务器IP>:5000
 ================================================================================
 """
 
@@ -32,6 +24,7 @@ from pydantic import BaseModel
 
 from logger import logger
 from rag import save_to_db, rag_chat
+from models import HUAYAN_CODE_REASONING_MODEL, HUAYAN_EMBEDDING_MODEL, HUAYAN_RERANK_MODEL
 
 
 def clean_collection_name(filename: str) -> str:
@@ -160,7 +153,7 @@ def allowed_file(filename: str) -> bool:
     【函数作用】检查文件是否允许上传
     
     【参数】
-        filename: 文件名，比如 "合同.docx"
+        filename: 文件名
     
     【返回值】
         True: 文件类型允许上传
@@ -182,7 +175,6 @@ def allowed_file(filename: str) -> bool:
 # =============================================================================
 collection_name = 'demo'  # 默认集合名称为'demo'
 
-
 # =============================================================================
 # 第五步：定义数据模型
 # =============================================================================
@@ -201,14 +193,12 @@ class CollectionRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     employee_id: str
-
-
 # =============================================================================
 # 第六步：定义路由（处理用户请求）
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# 路由0: Favicon图标
+# 路由1: Favicon图标
 # -----------------------------------------------------------------------------
 @app.get("/favicon.ico")
 async def favicon():
@@ -223,7 +213,7 @@ async def favicon():
     return response
 
 # -----------------------------------------------------------------------------
-# 路由0.1: 苹果设备图标 (iOS Safari自动请求)
+# 路由2: 设备图标
 # -----------------------------------------------------------------------------
 @app.get("/apple-touch-icon.png")
 @app.get("/apple-touch-icon-precomposed.png")
@@ -240,7 +230,7 @@ async def apple_touch_icon():
     return response
 
 # -----------------------------------------------------------------------------
-# 路由0.2: 登录页面
+# 路由3: 登录页面
 # -----------------------------------------------------------------------------
 @app.get("/login/", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -251,10 +241,10 @@ async def login_page(request: Request):
     
     【请求方式】GET
     """
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html")
 
 # -----------------------------------------------------------------------------
-# 路由0.3: 登录处理
+# 路由4: 登录处理
 # -----------------------------------------------------------------------------
 @app.post("/login/")
 async def login(login_request: LoginRequest):
@@ -286,7 +276,7 @@ async def login(login_request: LoginRequest):
     return response
 
 # -----------------------------------------------------------------------------
-# 路由1: 文档上传页面
+# 路由5: 文档上传页面
 # -----------------------------------------------------------------------------
 @app.get("/document_upload/", response_class=HTMLResponse)
 async def document_upload_page(request: Request):
@@ -297,7 +287,7 @@ async def document_upload_page(request: Request):
     
     【请求方式】GET
     """
-    return templates.TemplateResponse("document_upload.html", {"request": request})
+    return templates.TemplateResponse(request, "document_upload.html")
 
 
 @app.post("/document_upload/")
@@ -368,7 +358,7 @@ async def document_upload(request: Request, file: UploadFile = File(...)):
 
 
 # -----------------------------------------------------------------------------
-# 路由2: 聊天页面（首页）
+# 路由6: 聊天页面（首页）
 # -----------------------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 @app.get("/chat/", response_class=HTMLResponse)
@@ -387,7 +377,7 @@ async def chat_page(request: Request):
         from fastapi.responses import RedirectResponse
         return RedirectResponse(url="/login/")
     
-    return templates.TemplateResponse("chat.html", {"request": request, "session_id": session_id})
+    return templates.TemplateResponse(request, "chat.html", {"session_id": session_id})
 
 
 @app.post("/chat/")
@@ -431,7 +421,7 @@ async def chat(chat_request: ChatRequest):
 
 
 # -----------------------------------------------------------------------------
-# 路由3: 切换当前使用的文档（集合）
+# 路由7: 切换当前使用的文档（集合）
 # -----------------------------------------------------------------------------
 @app.get("/collection/")
 async def get_collection():
@@ -517,7 +507,7 @@ async def get_documents():
 
 
 # -----------------------------------------------------------------------------
-# 路由4: 获取聊天历史
+# 路由8: 获取聊天历史
 # -----------------------------------------------------------------------------
 @app.get("/chat_history/")
 async def get_chat_history(session_id: str):
@@ -655,7 +645,35 @@ async def delete_document(filename: str):
 
 
 # -----------------------------------------------------------------------------
-# 路由5: 模型健康检测
+# 路由9: 获取模型名称（从 models.py 动态获取）
+# -----------------------------------------------------------------------------
+@app.get("/api/model-names")
+async def get_model_names():
+    """
+    【功能】获取当前配置的模型名称
+    
+    【URL】/api/model-names
+    
+    【请求方式】GET
+    
+    【返回值】
+        {
+            "chat": "text-chat-latest",
+            "embedding": "Qwen3-Embedding-8B",
+            "rerank": "Qwen3-Reranker-4B",
+            "mineru": "MinerU"
+        }
+    """
+    return JSONResponse({
+        'chat': HUAYAN_CODE_REASONING_MODEL,
+        'embedding': HUAYAN_EMBEDDING_MODEL,
+        'rerank': HUAYAN_RERANK_MODEL,
+        'mineru': 'MinerU'
+    })
+
+
+# -----------------------------------------------------------------------------
+# 路由10: 模型健康检测
 # -----------------------------------------------------------------------------
 @app.get("/api/model-health")
 async def get_model_health(model_type: Optional[str] = None, test_type: str = "light"):

@@ -2,21 +2,11 @@
 ================================================================================
 tool函数库 (function_tools.py)
 
-【这个文件的作用】
-这个文件是系统的"工具箱"，提供了各种基础功能：
+提供各种基础功能：
 1. 向量数据库操作（存数据、搜数据）
-2. 文档读取（读取Word文档）
-3. AI模型调用（调用通义千问等大模型）
+2. 文档读取
+3. AI模型调用
 4. 工具函数（中文转拼音等）
-
-【什么是向量（Vector）】
-向量是一串数字，可以表示文本的含义。
-比如："苹果" 和 "水果" 的向量会很相似，因为它们意思相关。
-这样计算机就能"理解"文本的相似度了。
-
-【什么是Embedding】
-Embedding就是把文字转换成向量的过程。
-我们使用阿里云的text-embedding模型来完成这个转换。
 ================================================================================
 """
 
@@ -49,13 +39,6 @@ class MyVectorDBConnector:
     
     【作用】封装ChromaDB向量数据库的操作
     
-    【什么是ChromaDB】
-    ChromaDB是一个开源的向量数据库，专门用来存储和搜索向量数据。
-    它的特点是：
-    - 轻量级，可以嵌入到Python程序中
-    - 支持持久化（数据保存到文件，重启后还在）
-    - 查询速度快
-    
     【核心概念】
     - Collection（集合）：类似于关系数据库中的"表"，每个文档一个集合
     - Document（文档）：存储的文本内容
@@ -75,8 +58,7 @@ class MyVectorDBConnector:
         self.chroma_client = chromadb.PersistentClient(path="./chroma")
         
         # 创建AI模型客户端（用于生成向量）
-        # get_normal_client() 在models.py中定义，返回OpenAI格式的客户端
-        self.client = get_normal_client()
+        self.client = get_huayan_model_client()
         
         logger.info("【向量数据库】连接成功，数据保存在 ./chroma 文件夹")
 
@@ -97,16 +79,6 @@ class MyVectorDBConnector:
             - ids: 文档ID列表
             - distances: 相似度距离列表（越小越相似）
             - metadatas: 元数据列表
-        
-        【搜索原理】
-            1. 把查询文本转成向量
-            2. 在向量空间中找最接近的向量
-            3. 返回对应的文档内容
-        
-        【什么是相似度】
-        两个向量之间的距离表示相似度：
-        - 距离越小，内容越相似
-        - 距离越大，内容越不相关
         """
         logger.debug(f"hybrid_search: {hybrid_search}")
         if hybrid_search:
@@ -127,7 +99,7 @@ class MyVectorDBConnector:
                     logger.info(f'关键词检索: "{1 - vector_weight}", 向量检索: "{vector_weight}"')
                     logger.info(f'【混合检索】集合: {collection_name}, 返回{n_results}条结果')
                     # 创建向量检索器
-                    embeddings = get_ali_embeddings()
+                    embeddings = get_huayan_embeddings()
                     vectorstore = LangChainChroma(
                         client=self.chroma_client,
                         collection_name=collection_name,
@@ -165,7 +137,7 @@ class MyVectorDBConnector:
         # 使用 LangChain 检索器进行向量相似度搜索
         logger.info(f'【向量数据库】正在搜索: "{query}"')
         logger.info(f'【向量数据库】集合: {collection_name}, 返回{n_results}条结果')
-        embeddings = get_ali_embeddings()
+        embeddings = get_huayan_embeddings()
         vectorstore = LangChainChroma(
             client=self.chroma_client,
             collection_name=collection_name,
@@ -208,17 +180,8 @@ class MyVectorDBConnector:
             logger.error(f'【向量数据库】删除集合 {collection_name} 失败: {str(e)}')
             return False
 
-
 # =============================================================================
-# 第二部分：文档处理函数（已移至 document_reader.py 模块）
-# =============================================================================
-# 文档处理功能已重构到独立的 document_reader.py 模块中
-# 请使用: from document_reader import DocumentReader
-# =============================================================================
-
-
-# =============================================================================
-# 第三部分：AI模型调用函数
+# 第二部分：AI模型调用函数
 # =============================================================================
 
 def get_completion(info, user_query, history="", model="qwen3.5-flash"):
@@ -265,7 +228,7 @@ def get_completion(info, user_query, history="", model="qwen3.5-flash"):
     请使用 Markdown 列表格式输出你的回答，每条内容前使用 "- " 开头。""")
 
     # 2. 获取AI客户端（使用LangChain版本）
-    client = get_lc_model_client()
+    client = get_huayan_model_client()
 
     # 3. 构建chain（不使用MarkdownListOutputParser，直接返回字符串）
     chain = prompt | client
@@ -294,15 +257,6 @@ def to_pinyin(fn):
     
     【作用】
     有些数据库不支持中文作为标识符，所以把中文转成拼音更安全。
-    
-    【例子】
-    "人事管理流程.docx" -> "renshiguanliliuchengdocx"
-    
-    【使用方式】
-    @to_pinyin
-    def my_function(collection_name='demo'):
-        pass
-
     """
     @wraps(fn)  # 保留原函数的元信息
     def chinese_to_pinyin(*args, **kwargs):
@@ -343,12 +297,12 @@ def rerank_documents(docs, query, top_n=5):
     【返回值】
         重排序后的文档内容列表
     """
-    if not get_ali_rerank or not docs:
+    if not get_huayan_rerank or not docs:
         return docs
     
     try:
         logger.info('\n>>> 执行重排序...')
-        reranker = get_ali_rerank(top_n=top_n)
+        reranker = get_huayan_rerank(top_n=top_n)
         
         # 构建文档对象列表
         from langchain_core.documents import Document
@@ -379,7 +333,6 @@ def check_model_health(model_type, test_type='light'):
         dict: 模型健康状态信息
     """
     import time
-    import os
     from datetime import datetime
     
     start_time = time.time()
@@ -395,7 +348,7 @@ def check_model_health(model_type, test_type='light'):
     try:
         # 检查API密钥
         if model_type in ['chat', 'embedding', 'rerank']:
-            api_key = os.getenv('DASHSCOPE_API_KEY')
+            api_key = API_KEY
             result['api_key_configured'] = bool(api_key)
             if not api_key:
                 result['status'] = 'offline'
@@ -406,50 +359,47 @@ def check_model_health(model_type, test_type='light'):
         # 轻量级检测
         if test_type == 'light':
             if model_type == 'chat':
-                result['model'] = ALI_TONGYI_TURBO_MODEL
+                result['model'] = HUAYAN_CODE_REASONING_MODEL
                 # 尝试初始化客户端
-                from models import get_ali_model_client
-                client = get_ali_model_client()
+                from models import get_huayan_model_client
+                client = get_huayan_model_client()
                 result['status'] = 'online'
                 result['message'] = '模型客户端初始化成功'
                 
             elif model_type == 'embedding':
-                result['model'] = ALI_TONGYI_EMBEDDING_V4
+                result['model'] = HUAYAN_EMBEDDING_MODEL
                 # 尝试初始化嵌入模型
-                from models import get_ali_embeddings
-                embeddings = get_ali_embeddings()
+                from models import get_huayan_embeddings
+                embeddings = get_huayan_embeddings()
                 result['status'] = 'online'
                 result['message'] = '嵌入模型初始化成功'
                 
             elif model_type == 'rerank':
-                result['model'] = ALI_TONGYI_RERANK_MODEL
+                result['model'] = HUAYAN_RERANK_MODEL
                 # 尝试初始化重排序模型
-                from models import get_ali_rerank
-                reranker = get_ali_rerank(top_n=3)
+                from models import get_huayan_rerank
+                reranker = get_huayan_rerank(top_n=3)
                 result['status'] = 'online'
                 result['message'] = '重排序模型初始化成功'
                 
         # 完整检测
         elif test_type == 'full':
             if model_type == 'chat':
-                result['model'] = ALI_TONGYI_TURBO_MODEL
-                from models import get_ali_model_client
-                client = get_ali_model_client()
+                result['model'] = HUAYAN_CODE_REASONING_MODEL
+                from models import get_huayan_model_client
+                client = get_huayan_model_client()
                 # 发送测试提示
                 test_prompt = "测试消息"
-                response = client.chat.completions.create(
-                    model=ALI_TONGYI_TURBO_MODEL,
-                    messages=[{"role": "user", "content": test_prompt}],
-                    temperature=0
-                )
-                if response.choices[0].message.content:
+                from langchain_core.messages import HumanMessage
+                response = client.invoke([HumanMessage(content=test_prompt)])
+                if response.content:
                     result['status'] = 'online'
                     result['message'] = '对话模型测试成功'
                 
             elif model_type == 'embedding':
-                result['model'] = ALI_TONGYI_EMBEDDING_V4
-                from models import get_ali_embeddings
-                embeddings = get_ali_embeddings()
+                result['model'] = HUAYAN_EMBEDDING_MODEL
+                from models import get_huayan_embeddings
+                embeddings = get_huayan_embeddings()
                 # 生成测试向量
                 test_text = "测试文本"
                 embedding = embeddings.embed_query(test_text)
@@ -458,10 +408,10 @@ def check_model_health(model_type, test_type='light'):
                     result['message'] = '嵌入模型测试成功'
                 
             elif model_type == 'rerank':
-                result['model'] = ALI_TONGYI_RERANK_MODEL
-                from models import get_ali_rerank
+                result['model'] = HUAYAN_RERANK_MODEL
+                from models import get_huayan_rerank
                 from langchain_core.documents import Document
-                reranker = get_ali_rerank(top_n=3)
+                reranker = get_huayan_rerank(top_n=3)
                 # 测试重排序
                 test_docs = [
                     Document(page_content="这是测试文档1"),
