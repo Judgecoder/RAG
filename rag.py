@@ -131,25 +131,37 @@ class RAGService:
             traceback.print_exc()  # 打印完整的堆栈跟踪
             return error_msg
     
-    def chat(self, user_query, collection_name=None, session_id=None, auto_route=None):
+    def chat(self, user_query, collection_name=None, session_id=None, auto_route=None,
+             n_results=None, hybrid_search=None, vector_weight=None,
+             rerank=None, rerank_top_k=None):
         """
         【功能】RAG智能问答
-        
+
         【参数】
             user_query: 用户的问题
             collection_name: 在哪个知识库中搜索，默认使用类初始化时的集合名称
             session_id: 用户工号，用于RedisChatMessageHistory的session_id
             auto_route: 是否启用自动路由检索，None表示使用实例默认值
-        
+            n_results: 返回的结果数量，None表示使用实例默认值
+            hybrid_search: 是否启用混合检索，None表示使用实例默认值
+            vector_weight: 向量检索权重，None表示使用实例默认值
+            rerank: 是否启用重排序，None表示使用实例默认值
+            rerank_top_k: 重排序后保留的结果数，None表示使用实例默认值
+
         【返回值】
             response: AI生成的答案
             retrieved_docs: 检索到的相关文档片段列表
         """
         # =========================================================================
-        # 阶段0：判断是否启用自动路由
+        # 阶段0：判断是否启用自动路由，使用传入的参数或默认值
         # =========================================================================
         use_route = auto_route if auto_route is not None else self.auto_route
         coll_name = collection_name or self.collection_name
+        _n_results = n_results if n_results is not None else self.n_results
+        _hybrid_search = hybrid_search if hybrid_search is not None else self.hybrid_search
+        _vector_weight = vector_weight if vector_weight is not None else self.vector_weight
+        _rerank = rerank if rerank is not None else self.rerank
+        _rerank_top_k = rerank_top_k if rerank_top_k is not None else self.rerank_top_k
         _rerank_applied = False
 
         logger.info('=' * 100)
@@ -175,9 +187,9 @@ class RAGService:
                 search_results = self.vector_db.search(
                     user_query,
                     collection_name=coll_name,
-                    n_results=self.n_results,
-                    hybrid_search=self.hybrid_search,
-                    vector_weight=self.vector_weight
+                    n_results=_n_results,
+                    hybrid_search=_hybrid_search,
+                    vector_weight=_vector_weight
                 )
                 retrieved_docs = search_results['documents'][0]
             else:
@@ -190,9 +202,9 @@ class RAGService:
                     search_results = self.vector_db.search(
                         user_query,
                         collection_name=coll_name,
-                        n_results=self.n_results,
-                        hybrid_search=self.hybrid_search,
-                        vector_weight=self.vector_weight
+                        n_results=_n_results,
+                        hybrid_search=_hybrid_search,
+                        vector_weight=_vector_weight
                     )
                     retrieved_docs = search_results['documents'][0]
                 else:
@@ -207,15 +219,15 @@ class RAGService:
                         results = self.vector_db.search(
                             user_query,
                             collection_name=candidate,
-                            n_results=self.n_results,
-                            hybrid_search=self.hybrid_search,
-                            vector_weight=self.vector_weight
+                            n_results=_n_results,
+                            hybrid_search=_hybrid_search,
+                            vector_weight=_vector_weight
                         )
                         candidate_docs = results['documents'][0]
 
                         # 每个候选集合独立重排序，各自保留 top_n 条
-                        if self.rerank:
-                            candidate_docs = rerank_documents(candidate_docs, user_query, top_n=self.rerank_top_k)
+                        if _rerank:
+                            candidate_docs = rerank_documents(candidate_docs, user_query, top_n=_rerank_top_k)
 
                         for doc in candidate_docs:
                             content_hash = hash(doc[:200])
@@ -223,7 +235,7 @@ class RAGService:
                                 seen_content.add(content_hash)
                                 all_docs.append(doc)
 
-                    retrieved_docs = all_docs[:self.n_results * max(1, len(candidates))]
+                    retrieved_docs = all_docs[:_n_results * max(1, len(candidates))]
                     logger.info(f'【路由】从 {len(candidates)} 个知识库共检索到 {len(retrieved_docs)} 条内容')
 
                     # 标记已按集合独立重排序，跳过后续通用重排序
@@ -237,9 +249,9 @@ class RAGService:
             search_results = self.vector_db.search(
                 user_query,
                 collection_name=coll_name,
-                n_results=self.n_results,
-                hybrid_search=self.hybrid_search,
-                vector_weight=self.vector_weight
+                n_results=_n_results,
+                hybrid_search=_hybrid_search,
+                vector_weight=_vector_weight
             )
 
             retrieved_docs = search_results['documents'][0]
@@ -249,15 +261,15 @@ class RAGService:
         logger.info('\n>>> 检索到的相关内容：')
         for i, doc in enumerate(retrieved_docs, 1):
             logger.info(f'\n[{i}] {doc[:500]}...')
-        
+
         # -------------------------------------------------------------------------
         # 第1.1步：重排序（Rerank）
         # -------------------------------------------------------------------------
-        if self.rerank and not _rerank_applied:
+        if _rerank and not _rerank_applied:
             # 对检索到的文档进行重排序（非路由模式，或路由回退到默认集合的情况）
             logger.info('【重排序】开始重排序...')
-            logger.info(f'【重排序】保留的结果数: {self.rerank_top_k}')
-            retrieved_docs = rerank_documents(retrieved_docs, user_query, top_n=self.rerank_top_k)
+            logger.info(f'【重排序】保留的结果数: {_rerank_top_k}')
+            retrieved_docs = rerank_documents(retrieved_docs, user_query, top_n=_rerank_top_k)
             
             # 打印重排序后的文档
             logger.info('\n>>> 重排序后的相关内容：')
@@ -420,16 +432,18 @@ def rag_chat(user_query, collection_name='demo', n_results=10, hybrid_search=Fal
     """
     保持向后兼容的rag_chat函数
     """
-    # 更新全局rag_service的配置
-    rag_service.collection_name = collection_name
-    rag_service.n_results = n_results
-    rag_service.hybrid_search = hybrid_search
-    rag_service.vector_weight = vector_weight
-    rag_service.rerank = rerank
-    rag_service.rerank_top_k = rerank_top_k
-    rag_service.auto_route = auto_route
-    # 调用chat方法
-    return rag_service.chat(user_query, session_id=session_id, auto_route=auto_route)
+    # 直接调用chat方法，传递所有参数，不修改全局实例
+    return rag_service.chat(
+        user_query,
+        collection_name=collection_name,
+        n_results=n_results,
+        hybrid_search=hybrid_search,
+        vector_weight=vector_weight,
+        rerank=rerank,
+        rerank_top_k=rerank_top_k,
+        session_id=session_id,
+        auto_route=auto_route
+    )
 
 
 # =============================================================================

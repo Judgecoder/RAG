@@ -2767,6 +2767,7 @@
                     // 检测当前是否为自动路由模式
                     const selectedOption = document.querySelector('.custom-select-option.selected');
                     const isAutoRoute = selectedOption ? selectedOption.dataset.value === '__auto__' : false;
+                    const currentCollection = selectedOption ? selectedOption.dataset.value : '';
 
                     const response = await fetch('/chat/', {
                         method: 'POST',
@@ -2779,7 +2780,8 @@
                             rerank: rerank,
                             rerank_top_k: parseInt(rerankTopK),
                             auto_route: isAutoRoute,
-                            session_id: sessionId
+                            session_id: sessionId,
+                            collection_name: currentCollection
                         })
                     });
 
