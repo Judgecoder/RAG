@@ -171,12 +171,7 @@ def allowed_file(filename: str) -> bool:
 
 
 # =============================================================================
-# 第四步：设置当前使用的知识库（集合）
-# =============================================================================
-collection_name = 'demo'  # 默认集合名称为'demo'
-
-# =============================================================================
-# 第五步：定义数据模型
+# 第四步：定义数据模型
 # =============================================================================
 class ChatRequest(BaseModel):
     message: str
@@ -187,6 +182,7 @@ class ChatRequest(BaseModel):
     rerank_top_k: int = 5
     auto_route: bool = False
     session_id: str
+    collection_name: Optional[str] = None
 
 class CollectionRequest(BaseModel):
     collection_name: Optional[str] = None
@@ -389,8 +385,6 @@ async def chat(chat_request: ChatRequest):
     
     【请求方式】POST
     """
-    global collection_name
-    
     message = chat_request.message
     logger.info(f"用户提问: {message}")
     
@@ -398,10 +392,18 @@ async def chat(chat_request: ChatRequest):
     if not message:
         raise HTTPException(status_code=400, detail="请输入问题")
     
+    # 使用前端传递的 collection_name，清理后符合 ChromaDB 规范
+    raw_collection = chat_request.collection_name
+    if raw_collection and raw_collection != '__auto__':
+        current_collection = clean_collection_name(raw_collection)
+    else:
+        current_collection = 'demo'
+    logger.info(f"【聊天】原始知识库: {raw_collection}, 清理后: {current_collection}")
+    
     # 调用rag.py中的rag_chat函数进行RAG问答
     response, retrieved_docs = rag_chat(
         message, 
-        collection_name=collection_name, 
+        collection_name=current_collection, 
         n_results=chat_request.top_k,
         hybrid_search=chat_request.hybrid_search,
         vector_weight=chat_request.vector_weight,
@@ -432,18 +434,14 @@ async def get_collection():
     
     【请求方式】GET
     """
-    global collection_name
-    
     # 获取uploads文件夹中的所有文件名
     name_list = os.listdir(UPLOAD_FOLDER)
     
-    # 返回文件列表和当前使用的文档名
+    # 返回文件列表（知识库由前端维护状态）
     return JSONResponse({
-        'name_list': name_list,           # 所有文档名称列表
-        'collection_name': collection_name  # 当前使用的文档名
+        'name_list': name_list,
+        'collection_name': 'demo'
     })
-
-
 @app.post("/collection/")
 async def switch_collection(collection_request: CollectionRequest):
     """
@@ -453,23 +451,21 @@ async def switch_collection(collection_request: CollectionRequest):
     
     【请求方式】POST
     """
-    global collection_name
-    
     new_collection = collection_request.collection_name
     
     # 清理集合名称，使其符合ChromaDB规范
     if new_collection and new_collection != 'demo':
-        collection_name = clean_collection_name(new_collection)
-        logger.info(f"切换集合: 原始名称={new_collection}, 清理后={collection_name}")
+        cleaned = clean_collection_name(new_collection)
+        logger.info(f"切换集合: 原始名称={new_collection}, 清理后={cleaned}")
     else:
-        collection_name = 'demo'
+        cleaned = 'demo'
     
-    logger.info(f'已切换到文档: {collection_name}')
+    logger.info(f'已切换到文档: {cleaned}')
     
     # 返回成功响应
     return JSONResponse({
         'message': '切换成功',
-        'collection_name': collection_name
+        'collection_name': cleaned
     })
 
 
@@ -575,8 +571,6 @@ async def delete_document(filename: str):
     【参数】
         filename: 要删除的文件名
     """
-    global collection_name
-    
     # 检查文件名是否为空
     if not filename:
         raise HTTPException(status_code=400, detail="文件名不能为空")
@@ -617,11 +611,6 @@ async def delete_document(filename: str):
             logger.error(f"删除本地文件 {filename} 失败: {str(e)}")
     else:
         logger.info(f"本地文件 {filename} 不存在")
-    
-    # 检查是否需要更新当前使用的集合
-    if collection_name == collection_to_delete:
-        collection_name = 'demo'
-        logger.info("已将当前集合切换回默认集合 'demo'")
     
     # 返回删除结果
     if delete_success or file_deleted:

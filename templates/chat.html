@@ -2792,7 +2792,8 @@
                             rerank: rerank,
                             rerank_top_k: parseInt(rerankTopK),
                             auto_route: isAutoRoute,
-                            session_id: sessionId
+                            session_id: sessionId,
+                            collection_name: isAutoRoute ? '__auto__' : document.getElementById('custom-select-value').textContent
                         })
                     });
 
