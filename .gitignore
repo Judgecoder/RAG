@@ -34,7 +34,6 @@ ENV/
 
 # 数据库和向量存储
 chroma/
-chat_history/
 
 # 模型文件（大文件）
 mineru_model/
