@@ -1,7 +1,4 @@
-# ============================================
-# 使用 --platform=linux/amd64 确保在 x86 架构上兼容
-# ============================================
-FROM --platform=linux/amd64 python:3.11-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
