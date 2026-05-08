@@ -3028,14 +3028,6 @@
                 const progressFill = item.querySelector('.progress-fill');
                 const statusEl = item.querySelector('.file-status');
 
-                // 模拟进度
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += Math.random() * 15;
-                    if (progress > 90) progress = 90;
-                    progressFill.style.width = progress + '%';
-                }, 200);
-
                 const formData = new FormData();
                 formData.append('file', file);
 
@@ -3045,31 +3037,63 @@
                         body: formData
                     });
 
-                    clearInterval(interval);
-                    progressFill.style.width = '100%';
-
-                    if (response.ok) {
-                        item.classList.remove('processing');
-                        item.classList.add('success');
-                        statusEl.className = 'file-status success';
-                        statusEl.innerHTML = '✓ 上传成功';
-                        setTimeout(() => {
-                            progressFill.parentElement.style.display = 'none';
-                            // 上传成功后移除文件项
-                            setTimeout(() => {
-                                if (item.parentNode) {
-                                    item.parentNode.removeChild(item);
-                                }
-                            }, 1000);
-                        }, 500);
-                        loadCollections();
-                        // 添加到文档管理器
-                        addDocumentToManager(file.name, file.size);
-                    } else {
+                    if (!response.ok) {
                         throw new Error('Upload failed');
                     }
+
+                    const data = await response.json();
+                    const taskId = data.task_id;
+
+                    if (!taskId) {
+                        throw new Error('No task_id returned');
+                    }
+
+                    const pollInterval = setInterval(async () => {
+                        try {
+                            const statusResp = await fetch(`/task/${taskId}`);
+                            if (!statusResp.ok) {
+                                clearInterval(pollInterval);
+                                throw new Error('Status check failed');
+                            }
+
+                            const status = await statusResp.json();
+
+                            progressFill.style.width = status.progress + '%';
+                            statusEl.innerHTML = `● ${status.message}`;
+
+                            if (status.status === 'completed') {
+                                clearInterval(pollInterval);
+                                item.classList.remove('processing');
+                                item.classList.add('success');
+                                statusEl.className = 'file-status success';
+                                statusEl.innerHTML = '✓ 上传成功';
+                                setTimeout(() => {
+                                    progressFill.parentElement.style.display = 'none';
+                                    setTimeout(() => {
+                                        if (item.parentNode) {
+                                            item.parentNode.removeChild(item);
+                                        }
+                                    }, 1000);
+                                }, 500);
+                                loadCollections();
+                                addDocumentToManager(file.name, file.size);
+                            } else if (status.status === 'error' || status.status === 'expired') {
+                                clearInterval(pollInterval);
+                                item.classList.remove('processing');
+                                item.classList.add('error');
+                                statusEl.className = 'file-status error';
+                                statusEl.innerHTML = '✗ 上传失败';
+                            }
+                        } catch (pollError) {
+                            clearInterval(pollInterval);
+                            item.classList.remove('processing');
+                            item.classList.add('error');
+                            statusEl.className = 'file-status error';
+                            statusEl.innerHTML = '✗ 状态查询失败';
+                        }
+                    }, 1000);
+
                 } catch (error) {
-                    clearInterval(interval);
                     item.classList.remove('processing');
                     item.classList.add('error');
                     statusEl.className = 'file-status error';
