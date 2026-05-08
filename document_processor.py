@@ -157,14 +157,22 @@ class DocumentProcessor:
             for i, s in enumerate(summaries)
         ]
 
+        BATCH_SIZE = 32
+
         logger.info("准备将摘要存入向量数据库...")
-        retriever.vectorstore.add_documents(summary_docs)
+        for i in range(0, len(summary_docs), BATCH_SIZE):
+            batch = summary_docs[i:i + BATCH_SIZE]
+            logger.info(f"  写入摘要批次 {i // BATCH_SIZE + 1}/{(len(summary_docs) + BATCH_SIZE - 1) // BATCH_SIZE}，共 {len(batch)} 条")
+            retriever.vectorstore.add_documents(batch)
 
         logger.info("准备将原始文档存储到字节存储...")
         retriever.docstore.mset(list(zip(doc_ids, split_docs)))
 
         logger.info("准备将原始文档也存入向量数据库...")
-        retriever.vectorstore.add_documents(split_docs)
+        for i in range(0, len(split_docs), BATCH_SIZE):
+            batch = split_docs[i:i + BATCH_SIZE]
+            logger.info(f"  写入原始文档批次 {i // BATCH_SIZE + 1}/{(len(split_docs) + BATCH_SIZE - 1) // BATCH_SIZE}，共 {len(batch)} 条")
+            retriever.vectorstore.add_documents(batch)
 
         return retriever
 
