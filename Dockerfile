@@ -1,3 +1,4 @@
+# 若要交叉构建使用：docker build --platform=linux/amd64 -t rag-service:latest .
 FROM python:3.11-slim
 
 WORKDIR /app
