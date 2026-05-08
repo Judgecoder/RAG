@@ -22,7 +22,11 @@ FastAPI是一个现代、快速（高性能）的Python Web框架，用于构建
 import os
 import re
 import hashlib
+import asyncio
+import uuid
+import time
 from typing import List, Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException, Response
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
@@ -178,7 +182,46 @@ def allowed_file(filename: str) -> bool:
 
 
 # =============================================================================
-# 第四步：定义数据模型
+# 第四步：异步任务管理系统
+# =============================================================================
+# 存储后台文档处理任务的状态
+task_status = {}
+task_executor = ThreadPoolExecutor(max_workers=4)
+
+async def process_document_background(task_id: str, file_path: str, collection_name: str, filename: str):
+    """
+    在后台异步处理文档，更新任务状态
+    """
+    logger.info(f"【后台任务 {task_id}】开始处理文档: {filename}")
+    try:
+        task_status[task_id]["progress"] = 10
+        task_status[task_id]["message"] = "正在解析文档..."
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(task_executor, save_to_db, file_path, collection_name)
+
+        if result and ("出错" in result or "错误" in result or "不支持" in result):
+            logger.error(f"【后台任务 {task_id}】文档处理失败: {result}")
+            task_status[task_id]["status"] = "error"
+            task_status[task_id]["message"] = f"文档处理失败: {result}"
+            task_status[task_id]["progress"] = 100
+        else:
+            logger.info(f"【后台任务 {task_id}】文档处理成功: {result}")
+            task_status[task_id]["status"] = "completed"
+            task_status[task_id]["message"] = "文档处理完成"
+            task_status[task_id]["progress"] = 100
+            task_status[task_id]["detail"] = result
+    except Exception as e:
+        logger.error(f"【后台任务 {task_id}】处理异常: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        task_status[task_id]["status"] = "error"
+        task_status[task_id]["message"] = f"处理出错: {str(e)}"
+        task_status[task_id]["progress"] = 100
+
+
+# =============================================================================
+# 第五步：定义数据模型
 # =============================================================================
 class ChatRequest(BaseModel):
     message: str
@@ -298,7 +341,7 @@ async def document_upload_page(request: Request):
 @app.post("/document_upload/")
 async def document_upload(request: Request, file: UploadFile = File(...)):
     """
-    【功能】处理文档上传
+    【功能】处理文档上传（异步非阻塞）
 
     【URL】/document_upload/
 
@@ -312,52 +355,69 @@ async def document_upload(request: Request, file: UploadFile = File(...)):
     if not allowed_file(file.filename):
         raise HTTPException(status_code=400, detail="不支持的文件类型，只支持 .docx、.pdf、.md、.xlsx、.csv、.txt 和 .doc 文件")
 
-    # 获取文件名
     filename = file.filename
     logger.info(f"接收到文件: {filename}")
 
-    # 构建完整的保存路径
     file_path = os.path.join(UPLOAD_FOLDER, filename)
     logger.info(f"保存路径: {file_path}")
 
-    # 保存文件到uploads文件夹
-    with open(file_path, "wb") as buffer:   # 二进制写入的方式打开文件
-        content = await file.read()  # 读取文件内容到内存
-        buffer.write(content)    # 将内存中的文件内容写入对象缓冲区
-        # with块结束时会自动关闭文件，触发flush()将数据持久化到磁盘
+    # 快速保存文件到磁盘（非阻塞 I/O）
+    with open(file_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
 
-    # 使用正则表达式处理文件名，去除路径分隔符
+    # 清理集合名称
     original_collection_name = re.split(r'[/\\]', filename)[-1]
-
-    # 清理集合名称，使其符合ChromaDB规范
     current_collection = clean_collection_name(original_collection_name)
     logger.info(f"原始集合名称: {original_collection_name}")
     logger.info(f"清理后集合名称: {current_collection}")
 
-    # 调用main.py中的save_to_db函数，将文档内容存入向量数据库
-    result = save_to_db(file_path, collection_name=current_collection)
+    # 创建后台任务，立即返回 task_id
+    task_id = str(uuid.uuid4())
+    task_status[task_id] = {
+        "status": "processing",
+        "progress": 0,
+        "filename": filename,
+        "collection_name": current_collection,
+        "message": "文件已保存，正在排队处理..."
+    }
 
-    # 检查处理结果
-    if result and ("出错" in result or "错误" in result or "不支持" in result):
-        # 处理失败，返回错误响应
-        logger.error(f"文档处理失败: {result}")
-        return JSONResponse({
-            "message": f"文档处理失败: {result}",
-            "filename": filename,
-            "collection_name": current_collection,
-            "error": True
-        }, status_code=500)
-    else:
-        # 处理成功
-        logger.info(f"文档已成功存入向量数据库，集合名称: {current_collection}")
+    asyncio.create_task(process_document_background(task_id, file_path, current_collection, filename))
 
-        # 返回成功响应给前端
-        return JSONResponse({
-            "message": "文件上传成功",
-            "filename": filename,
-            "collection_name": collection_name,
-            "detail": result  # 包含详细的处理结果
-        }, status_code=200)
+    return JSONResponse({
+        "message": "文件上传成功，正在后台处理",
+        "filename": filename,
+        "collection_name": current_collection,
+        "task_id": task_id
+    }, status_code=202)
+
+
+# -----------------------------------------------------------------------------
+# 路由1.1: 查询文档处理任务状态
+# -----------------------------------------------------------------------------
+@app.get("/task/{task_id}")
+async def get_task_status(task_id: str):
+    """
+    【功能】查询异步文档处理任务的状态
+
+    【URL】/task/{task_id}
+
+    【请求方式】GET
+    """
+    if task_id not in task_status:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    status = task_status[task_id]
+
+    # 已完成或出错的任务，30秒后自动清理
+    if status["status"] in ("completed", "error"):
+        if "cleanup_at" not in status:
+            status["cleanup_at"] = time.time() + 30
+        elif time.time() > status["cleanup_at"]:
+            del task_status[task_id]
+            return JSONResponse({"status": "expired", "message": "任务记录已过期"})
+
+    return JSONResponse(status)
 
 
 # -----------------------------------------------------------------------------
