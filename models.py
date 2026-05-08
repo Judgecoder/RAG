@@ -10,13 +10,14 @@
 ================================================================================
 """
 
+import os
+
 # =============================================================================
 # 第一部分：华言模型配置
 # =============================================================================
 
-
-HUAYAN_API_KEY_OS_VAR_NAME = "HUAYAN_API_KEY"
-HUAYAN_URL = ""
+# 优先使用环境变量（Docker 构建时注入），回退到空字符串
+HUAYAN_URL = os.getenv("HUAYAN_URL", "")
 
 # 对话模型
 HUAYAN_CODE_REASONING_MODEL = "text-chat-latest"
@@ -27,7 +28,7 @@ HUAYAN_EMBEDDING_MODEL = "Qwen3-Embedding-8B"
 # 重排模型
 HUAYAN_RERANK_MODEL = "Qwen3-Reranker-4B"
 
-API_KEY = ""
+API_KEY = os.getenv("API_KEY", "")
 
 # =============================================================================
 # 第二部分：导入必要的库

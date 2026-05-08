@@ -1,6 +1,14 @@
 # 若要交叉构建使用：docker build --platform=linux/amd64 -t rag-service:latest .
 FROM python:3.11-slim
 
+# 构建参数（构建时传入，不写入代码）
+ARG HUAYAN_URL
+ARG API_KEY
+
+# 将构建参数写入镜像环境变量（运行时生效）
+ENV HUAYAN_URL=$HUAYAN_URL
+ENV API_KEY=$API_KEY
+
 WORKDIR /app
 
 RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources && \
@@ -20,6 +28,9 @@ RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.li
 
 # 复制项目文件
 COPY . .
+
+# 安装 CPU 版 torch（不包含 CUDA，减小镜像体积）
+RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # 安装 Python 依赖
 RUN pip3 install --upgrade pip && \
