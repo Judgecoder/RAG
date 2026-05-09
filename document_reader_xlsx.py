@@ -81,49 +81,43 @@ class XLSXDocumentReader(DocumentReaderBase):
             return []
         
         self._log(f'正在读取: {filepath}')
-        
+
         try:
-            # 使用pandas读取Excel文件
-            df = pd.read_excel(filepath)
-            
-            # 获取表头
-            headers = list(df.columns)
-            header_str = '\t'.join(headers)
-            
-            # 按行进行分块，每行成为一个单独的块
+            excel_file = pd.ExcelFile(filepath)
+            sheet_names = excel_file.sheet_names
+            self._log(f'检测到 {len(sheet_names)} 个工作表: {sheet_names}')
+
             documents = []
             chunk_size = 1000
-            
-            # 遍历每一行
-            for index, row in df.iterrows():
-                # 构建行内容
-                row_values = [str(row[col]) for col in headers]
-                row_str = '\t'.join(row_values)
-                
-                # 构建带有表头的行内容（键值对格式）
-                row_with_header = []
-                for col in headers:
-                    row_with_header.append(f"{col}: {row[col]}")
-                row_with_header = '\n'.join(row_with_header)
-                row_size = len(row_with_header)
-                
-                # 检查是否超过chunk_size
-                if row_size > chunk_size:
-                    # 如果单行超过chunk_size，进行分割
-                    # 这里简单处理，实际情况可能需要更复杂的分割逻辑
-                    self._log_warning(f'行 {index+1} 超过chunk_size，可能需要进一步处理')
-                    documents.append(row_with_header[:chunk_size])
-                else:
-                    # 每行作为一个单独的块
-                    documents.append(row_with_header)
-            
-            # 计算总字符数
+
+            for sheet_name in sheet_names:
+                df = excel_file.parse(sheet_name=sheet_name)
+                headers = list(df.columns)
+
+                for index, row in df.iterrows():
+                    row_with_header = []
+                    for col in headers:
+                        value = row[col] if col in df.columns else ''
+                        row_with_header.append(f"{col}: {value}")
+                    row_with_header = '\n'.join(row_with_header)
+
+                    sheet_marker = f"[来源工作表: {sheet_name}] "
+                    row_with_marker = sheet_marker + row_with_header
+
+                    row_size = len(row_with_marker)
+
+                    if row_size > chunk_size:
+                        self._log_warning(f'工作表 {sheet_name} 的行 {index+1} 超过chunk_size，可能需要进一步处理')
+                        documents.append(row_with_marker[:chunk_size])
+                    else:
+                        documents.append(row_with_marker)
+
             total_chars = sum(len(doc) for doc in documents)
             self._log(f'XLSX文件共 {total_chars} 个字符')
             self._log(f'切分成 {len(documents)} 个片段')
-            
+
             return documents
-            
+
         except Exception as e:
             self._log_error(f'读取文件 {filepath} 时出错: {e}')
             return []
