@@ -1931,6 +1931,407 @@
                 border-radius: 0;
             }
         }
+
+        /* 文件预览弹窗样式 - 类似Mac OS预览风格 */
+        .preview-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .preview-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .preview-container {
+            background: var(--bg-card);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            width: 90vw;
+            max-width: 1000px;
+            max-height: 85vh;
+            overflow: hidden;
+            transform: scale(0.95) translateY(20px);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-overlay.show .preview-container {
+            transform: scale(1) translateY(0);
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, rgba(0, 125, 255, 0.06) 0%, rgba(123, 104, 238, 0.06) 100%);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .preview-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .preview-file-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--primary-light);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .preview-file-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-file-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+        .preview-file-meta {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .preview-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-close-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: var(--radius);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .preview-close-btn:hover {
+            background: rgba(0, 0, 0, 0.06);
+            color: var(--text-primary);
+        }
+
+        .preview-close-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .preview-shortcut-hint {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            padding: 4px 10px;
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: var(--radius-full);
+        }
+
+        .preview-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--text-primary);
+            background: var(--bg-base);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .preview-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .preview-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .preview-content::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 3px;
+        }
+
+        .preview-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .preview-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+        }
+
+        .preview-loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0, 125, 255, 0.2);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .preview-error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .preview-error-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: var(--danger);
+        }
+
+        .preview-error-message {
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* 选中状态高亮 */
+        .file-item.selected-for-preview {
+            background: rgba(0, 125, 255, 0.12);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0, 125, 255, 0.2);
+        }
+
+        /* 渲染内容样式 */
+        .preview-rendered {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-primary);
+        }
+
+        .preview-rendered h1 {
+            font-size: 1.6em;
+            font-weight: 600;
+            margin: 0 0 16px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .preview-rendered h2 {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin: 24px 0 12px 0;
+            color: var(--text-primary);
+        }
+
+        .preview-rendered h3 {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin: 20px 0 10px 0;
+            color: var(--text-primary);
+        }
+
+        .preview-rendered h4, .preview-rendered h5, .preview-rendered h6 {
+            font-size: 1em;
+            font-weight: 600;
+            margin: 16px 0 8px 0;
+            color: var(--text-primary);
+        }
+
+        .preview-rendered p {
+            margin: 0 0 14px 0;
+        }
+
+        .preview-rendered ul, .preview-rendered ol {
+            margin: 0 0 14px 0;
+            padding-left: 24px;
+        }
+
+        .preview-rendered li {
+            margin-bottom: 6px;
+        }
+
+        .preview-rendered code {
+            background: rgba(0, 0, 0, 0.06);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.9em;
+            color: var(--primary);
+        }
+
+        .preview-rendered pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 0 0 14px 0;
+        }
+
+        .preview-rendered pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+            font-size: 13px;
+        }
+
+        .preview-rendered blockquote {
+            margin: 0 0 14px 0;
+            padding: 10px 16px;
+            border-left: 4px solid var(--primary);
+            background: rgba(0, 125, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        .preview-rendered table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 14px 0;
+            font-size: 13px;
+        }
+
+        .preview-rendered table th {
+            background: rgba(0, 125, 255, 0.08);
+            font-weight: 600;
+            text-align: left;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .preview-rendered table td {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .preview-rendered table tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .preview-rendered table tr:hover {
+            background: rgba(0, 125, 255, 0.04);
+        }
+
+        .preview-rendered hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 20px 0;
+        }
+
+        .preview-rendered a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .preview-rendered a:hover {
+            text-decoration: underline;
+        }
+
+        .preview-rendered img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        /* Excel多表格样式 */
+        .excel-sheet {
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .excel-sheet:last-child {
+            border-bottom: none;
+        }
+
+        .excel-sheet .sheet-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            padding: 6px 12px;
+            background: rgba(0, 125, 255, 0.06);
+            border-radius: var(--radius);
+            display: inline-block;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .preview-table th {
+            background: rgba(0, 125, 255, 0.1);
+            font-weight: 600;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .preview-table td {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+        }
+
+        .preview-table tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .preview-table tr:hover {
+            background: rgba(0, 125, 255, 0.04);
+        }
+
+        /* 纯文本预览 */
+        .preview-text {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+            color: var(--text-primary);
+        }
     </style>
 </head>
 <body>
@@ -2200,6 +2601,35 @@
         </main>
     </div>
 
+    <!-- 文件预览弹窗 -->
+    <div class="preview-overlay" id="preview-overlay">
+        <div class="preview-container">
+            <div class="preview-header">
+                <div class="preview-header-left">
+                    <div class="preview-file-icon" id="preview-file-icon">📄</div>
+                    <div class="preview-file-info">
+                        <div class="preview-file-name" id="preview-file-name">文件名</div>
+                        <div class="preview-file-meta" id="preview-file-meta">文件信息</div>
+                    </div>
+                </div>
+                <div class="preview-header-right">
+                    <span class="preview-shortcut-hint">按 空格 关闭</span>
+                    <button class="preview-close-btn" id="preview-close-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="preview-content" id="preview-content">
+                <div class="preview-loading">
+                    <div class="preview-loading-spinner"></div>
+                    <span>正在加载文档...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // DOM 元素
@@ -2234,6 +2664,17 @@
             const sendButton = document.getElementById('send-button');
             const typingIndicator = document.getElementById('typing-indicator');
             const welcomeMsg = document.getElementById('welcome-msg');
+
+            // 预览相关元素
+            const previewOverlay = document.getElementById('preview-overlay');
+            const previewFileName = document.getElementById('preview-file-name');
+            const previewFileMeta = document.getElementById('preview-file-meta');
+            const previewFileIcon = document.getElementById('preview-file-icon');
+            const previewContent = document.getElementById('preview-content');
+            const previewCloseBtn = document.getElementById('preview-close-btn');
+
+            // 选中文件用于预览
+            let selectedFileName = null;
             
             // 点击下拉菜单显示/隐藏选项
             if (customSelect) {
@@ -2963,11 +3404,11 @@
                 try {
                     const response = await fetch('/documents/');
                     const data = await response.json();
-                    
+
                     if (data.message === '获取文档列表成功') {
                         // 清空文件列表
                         fileList.innerHTML = '';
-                        
+
                         // 添加每个文件到列表
                         data.files.forEach(file => {
                             const item = createFileItem(file.name, file.size);
@@ -2980,14 +3421,201 @@
                             if (progressBar) progressBar.style.display = 'none';
                             fileList.appendChild(item);
                         });
-                        
+
                         // 绑定删除按钮事件
                         bindDeleteEvents();
+
+                        // 绑定文件点击事件用于预览
+                        bindFileClickEvents();
                     }
                 } catch (error) {
                     console.error('加载文件列表失败:', error);
                 }
             }
+
+            // 绑定文件点击事件
+            function bindFileClickEvents() {
+                const fileItems = fileList.querySelectorAll('.file-item');
+                fileItems.forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        // 如果点击的是删除按钮，不处理预览
+                        if (e.target.closest('.delete-btn')) {
+                            return;
+                        }
+
+                        // 获取文件名
+                        const fileNameEl = this.querySelector('.file-name');
+                        if (!fileNameEl) return;
+                        const filename = fileNameEl.textContent;
+
+                        // 移除之前的选中状态
+                        fileItems.forEach(fi => fi.classList.remove('selected-for-preview'));
+
+                        // 添加选中状态
+                        this.classList.add('selected-for-preview');
+
+                        // 设置选中文件
+                        selectedFileName = filename;
+
+                        // 更新预览文件信息
+                        previewFileName.textContent = filename;
+
+                        // 获取文件扩展名
+                        const extension = filename.split('.').pop().toLowerCase();
+                        const iconMap = {
+                            'pdf': '📕',
+                            'docx': '📘',
+                            'doc': '📘',
+                            'txt': '📝',
+                            'md': '📋',
+                            'xlsx': '📊',
+                            'xls': '📊',
+                            'csv': '📈'
+                        };
+                        previewFileIcon.textContent = iconMap[extension] || '📄';
+
+                        // 打开预览
+                        showPreview();
+                    });
+                });
+            }
+
+            // 显示预览
+            function showPreview() {
+                if (!selectedFileName) return;
+                previewOverlay.classList.add('show');
+                previewFileMeta.textContent = '正在加载...';
+                previewContent.innerHTML = `
+                    <div class="preview-loading">
+                        <div class="preview-loading-spinner"></div>
+                        <span>正在加载文档...</span>
+                    </div>
+                `;
+                loadPreviewContent(selectedFileName);
+            }
+
+            // 隐藏预览
+            function hidePreview() {
+                previewOverlay.classList.remove('show');
+                // 移除选中状态
+                const selectedItem = fileList.querySelector('.selected-for-preview');
+                if (selectedItem) {
+                    selectedItem.classList.remove('selected-for-preview');
+                }
+                selectedFileName = null;
+            }
+
+            // 加载预览内容
+            async function loadPreviewContent(filename) {
+                try {
+                    const response = await fetch(`/preview/${encodeURIComponent(filename)}`);
+                    const data = await response.json();
+
+                    if (response.ok && data.content) {
+                        previewFileMeta.textContent = `字符数: ${data.total_chars}`;
+
+                        // 如果有渲染后的HTML内容，优先使用
+                        if (data.rendered_html) {
+                            previewContent.innerHTML = `<div class="preview-rendered">${data.rendered_html}</div>`;
+                        } else {
+                            // 否则使用纯文本格式
+                            previewContent.innerHTML = `<pre class="preview-text">${escapeHtml(data.content)}</pre>`;
+                        }
+                    } else {
+                        previewFileMeta.textContent = '无法预览';
+                        previewContent.innerHTML = `
+                            <div class="preview-error">
+                                <div class="preview-error-icon">❌</div>
+                                <div class="preview-error-message">${data.message || '无法加载文档内容'}</div>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    previewFileMeta.textContent = '加载失败';
+                    previewContent.innerHTML = `
+                        <div class="preview-error">
+                            <div class="preview-error-icon">❌</div>
+                            <div class="preview-error-message">加载预览失败: ${error.message}</div>
+                        </div>
+                    `;
+                }
+            }
+
+            // HTML转义
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // 绑定删除按钮事件
+            function bindDeleteEvents() {
+                const deleteBtns = fileList.querySelectorAll('.delete-btn');
+                deleteBtns.forEach(btn => {
+                    btn.addEventListener('click', async function(e) {
+                        e.stopPropagation();
+                        const filename = this.dataset.filename;
+                        if (!filename) return;
+
+                        if (!confirm(`确定要删除文档 "${filename}" 吗？`)) {
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch(`/document/?filename=${encodeURIComponent(filename)}`, {
+                                method: 'DELETE'
+                            });
+
+                            if (response.ok) {
+                                // 移除文件项
+                                this.closest('.file-item').remove();
+                            } else {
+                                alert('删除文档失败');
+                            }
+                        } catch (error) {
+                            console.error('删除文档失败:', error);
+                            alert('删除文档时发生错误');
+                        }
+                    });
+                });
+            }
+
+            // 键盘事件监听 - 空格键打开/关闭预览
+            document.addEventListener('keydown', function(e) {
+                // 按空格键打开/关闭预览（不影响输入框）
+                if (e.code === 'Space' && !e.target.closest('input, textarea')) {
+                    e.preventDefault();
+                    if (previewOverlay.classList.contains('show')) {
+                        // 如果预览已打开，按空格关闭
+                        hidePreview();
+                    } else if (selectedFileName) {
+                        // 如果预览未打开且有选中文件，按空格打开
+                        showPreview();
+                    }
+                }
+
+                // 按ESC关闭预览（保留作为备用方式）
+                if (e.code === 'Escape' && previewOverlay.classList.contains('show')) {
+                    hidePreview();
+                }
+            });
+
+            // 关闭按钮点击事件
+            if (previewCloseBtn) {
+                previewCloseBtn.addEventListener('click', hidePreview);
+            }
+
+            // 点击遮罩关闭预览
+            if (previewOverlay) {
+                previewOverlay.addEventListener('click', function(e) {
+                    if (e.target === previewOverlay) {
+                        hidePreview();
+                    }
+                });
+            }
+
+            // 加载文件列表
+            loadFiles();
 
             // 绑定模型状态按钮事件
             if (checkModelsBtn) {

@@ -712,6 +712,165 @@ async def get_model_names():
 
 
 # -----------------------------------------------------------------------------
+# 路由9: 文件预览（类似Mac OS预览功能）
+# -----------------------------------------------------------------------------
+def _render_markdown_to_html(text):
+    """将Markdown内容渲染为HTML"""
+    try:
+        import markdown
+        html = markdown.markdown(
+            text,
+            extensions=['tables', 'fenced_code', 'codehilite', 'nl2br']
+        )
+        return html
+    except Exception as e:
+        logger.warning(f"Markdown渲染失败: {e}")
+        return None
+
+@app.get("/preview/{filename}")
+async def preview_document(filename: str):
+    """
+    【功能】预览文档内容（类似Mac OS空格键预览）
+
+    【URL】/preview/{filename}
+
+    【请求方式】GET
+
+    【参数】
+        filename: 要预览的文件名
+
+    【返回】
+        文档内容预览
+    """
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="文件不存在")
+    
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=400, detail="不是有效文件")
+    
+    extension = os.path.splitext(filename)[1].lower()
+    
+    try:
+        preview_text = ""
+        rendered_html = ""
+        
+        if extension in ('.md', '.txt'):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                preview_text = f.read()
+            if extension == '.md':
+                rendered_html = _render_markdown_to_html(preview_text)
+        
+        elif extension == '.pdf':
+            try:
+                from PyPDF2 import PdfReader
+                reader = PdfReader(file_path)
+                text_list = []
+                for page in reader.pages:
+                    text = page.extract_text()
+                    if text:
+                        text_list.append(text)
+                preview_text = '\n\n'.join(text_list)
+            except Exception as e:
+                logger.warning(f"PyPDF2读取失败: {e}")
+                from document_reader_pdf import PDFDocumentReader
+                reader = PDFDocumentReader()
+                content = reader.read_document(file_path)
+                if content:
+                    preview_text = ''.join(content)
+        
+        elif extension == '.docx':
+            try:
+                from docx import Document
+                doc = Document(file_path)
+                text_list = []
+                for paragraph in doc.paragraphs:
+                    text_list.append(paragraph.text)
+                preview_text = '\n\n'.join(text_list)
+            except Exception as e:
+                logger.warning(f"python-docx读取失败: {e}")
+                from document_reader_word import WordDocumentReader
+                reader = WordDocumentReader()
+                content = reader.read_document(file_path)
+                if content:
+                    preview_text = ''.join(content)
+        
+        elif extension == '.doc':
+            from document_reader_word import WordDocumentReader
+            reader = WordDocumentReader()
+            content = reader.read_document(file_path)
+            if content:
+                preview_text = ''.join(content)
+        
+        elif extension == '.csv':
+            try:
+                import pandas as pd
+                df = pd.read_csv(file_path)
+                preview_text = df.to_string(index=False)
+                rendered_html = df.to_html(index=False, classes='preview-table', border=0)
+            except Exception as e:
+                logger.warning(f"pandas读取CSV失败: {e}")
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    preview_text = f.read()
+        
+        elif extension == '.xlsx':
+            try:
+                import pandas as pd
+                excel_file = pd.ExcelFile(file_path)
+                sheet_names = excel_file.sheet_names
+                text_parts = []
+                html_parts = []
+                for sheet_name in sheet_names:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    text_parts.append(f"=== Sheet: {sheet_name} ===")
+                    text_parts.append(df.to_string(index=False))
+                    html_parts.append(f'<div class="excel-sheet"><h4 class="sheet-title">{sheet_name}</h4>{df.to_html(index=False, classes="preview-table", border=0)}</div>')
+                preview_text = '\n\n'.join(text_parts)
+                rendered_html = '\n'.join(html_parts)
+            except Exception as e:
+                logger.warning(f"pandas读取Excel失败: {e}")
+                from document_reader_xlsx import XLSXDocumentReader
+                reader = XLSXDocumentReader()
+                content = reader.read_document(file_path)
+                if content:
+                    preview_text = ''.join(content)
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"不支持的文件类型: {extension}")
+        
+        if not preview_text:
+            return JSONResponse({
+                "message": "文档内容为空",
+                "content": "",
+                "rendered_html": "",
+                "filename": filename,
+                "extension": extension
+            })
+        
+        preview_text = preview_text[:5000]
+        
+        return JSONResponse({
+            "message": "获取预览内容成功",
+            "content": preview_text,
+            "rendered_html": rendered_html,
+            "filename": filename,
+            "extension": extension,
+            "total_chars": len(preview_text)
+        })
+        
+    except Exception as e:
+        logger.error(f"预览文档失败: {str(e)}")
+        return JSONResponse({
+            "message": f"预览文档失败: {str(e)}",
+            "content": "",
+            "rendered_html": "",
+            "filename": filename,
+            "extension": extension
+        }, status_code=500)
+
+
+# -----------------------------------------------------------------------------
 # 路由10: 模型健康检测
 # -----------------------------------------------------------------------------
 @app.get("/api/model-health")
