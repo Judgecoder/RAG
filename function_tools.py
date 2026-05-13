@@ -58,7 +58,7 @@ class MyVectorDBConnector:
         self.chroma_client = chromadb.PersistentClient(path="./chroma")
         
         # 创建AI模型客户端（用于生成向量）
-        self.client = get_huayan_model_client()
+        self.client = get_normal_client()
         
         logger.info("【向量数据库】连接成功，数据保存在 ./chroma 文件夹")
 
@@ -99,7 +99,7 @@ class MyVectorDBConnector:
                     logger.info(f'关键词检索: "{1 - vector_weight}", 向量检索: "{vector_weight}"')
                     logger.info(f'【混合检索】集合: {collection_name}, 返回{n_results}条结果')
                     # 创建向量检索器
-                    embeddings = get_huayan_embeddings()
+                    embeddings = get_ali_embeddings()
                     vectorstore = LangChainChroma(
                         client=self.chroma_client,
                         collection_name=collection_name,
@@ -137,7 +137,7 @@ class MyVectorDBConnector:
         # 使用 LangChain 检索器进行向量相似度搜索
         logger.info(f'【向量数据库】正在搜索: "{query}"')
         logger.info(f'【向量数据库】集合: {collection_name}, 返回{n_results}条结果')
-        embeddings = get_huayan_embeddings()
+        embeddings = get_ali_embeddings()
         vectorstore = LangChainChroma(
             client=self.chroma_client,
             collection_name=collection_name,
@@ -228,7 +228,7 @@ def get_completion(info, user_query, history="", model="qwen3.5-flash"):
     请使用 Markdown 列表格式输出你的回答，每条内容前使用 "- " 开头。""")
 
     # 2. 获取AI客户端（使用LangChain版本）
-    client = get_huayan_model_client()
+    client = get_lc_model_client()
 
     # 3. 构建chain（不使用MarkdownListOutputParser，直接返回字符串）
     chain = prompt | client
@@ -297,12 +297,12 @@ def rerank_documents(docs, query, top_n=5):
     【返回值】
         重排序后的文档内容列表
     """
-    if not get_huayan_rerank or not docs:
+    if not get_ali_rerank or not docs:
         return docs
     
     try:
         logger.info('\n>>> 执行重排序...')
-        reranker = get_huayan_rerank(top_n=top_n)
+        reranker = get_ali_rerank(top_n=top_n)
         
         # 构建文档对象列表
         from langchain_core.documents import Document
@@ -333,6 +333,7 @@ def check_model_health(model_type, test_type='light'):
         dict: 模型健康状态信息
     """
     import time
+    import os
     from datetime import datetime
     
     start_time = time.time()
@@ -348,7 +349,7 @@ def check_model_health(model_type, test_type='light'):
     try:
         # 检查API密钥
         if model_type in ['chat', 'embedding', 'rerank']:
-            api_key = API_KEY
+            api_key = os.getenv('DASHSCOPE_API_KEY')
             result['api_key_configured'] = bool(api_key)
             if not api_key:
                 result['status'] = 'offline'
@@ -359,35 +360,35 @@ def check_model_health(model_type, test_type='light'):
         # 轻量级检测
         if test_type == 'light':
             if model_type == 'chat':
-                result['model'] = HUAYAN_CODE_REASONING_MODEL
+                result['model'] = ALI_TONGYI_TURBO_MODEL
                 # 尝试初始化客户端
-                from models import get_huayan_model_client
-                client = get_huayan_model_client()
+                from models import get_ali_model_client
+                client = get_ali_model_client()
                 result['status'] = 'online'
                 result['message'] = '模型客户端初始化成功'
                 
             elif model_type == 'embedding':
-                result['model'] = HUAYAN_EMBEDDING_MODEL
+                result['model'] = ALI_TONGYI_EMBEDDING_V4
                 # 尝试初始化嵌入模型
-                from models import get_huayan_embeddings
-                embeddings = get_huayan_embeddings()
+                from models import get_ali_embeddings
+                embeddings = get_ali_embeddings()
                 result['status'] = 'online'
                 result['message'] = '嵌入模型初始化成功'
                 
             elif model_type == 'rerank':
-                result['model'] = HUAYAN_RERANK_MODEL
+                result['model'] = ALI_TONGYI_RERANK_MODEL
                 # 尝试初始化重排序模型
-                from models import get_huayan_rerank
-                reranker = get_huayan_rerank(top_n=3)
+                from models import get_ali_rerank
+                reranker = get_ali_rerank(top_n=3)
                 result['status'] = 'online'
                 result['message'] = '重排序模型初始化成功'
                 
         # 完整检测
         elif test_type == 'full':
             if model_type == 'chat':
-                result['model'] = HUAYAN_CODE_REASONING_MODEL
-                from models import get_huayan_model_client
-                client = get_huayan_model_client()
+                result['model'] = ALI_TONGYI_TURBO_MODEL
+                from models import get_ali_model_client
+                client = get_ali_model_client()
                 # 发送测试提示
                 test_prompt = "测试消息"
                 from langchain_core.messages import HumanMessage
@@ -397,9 +398,9 @@ def check_model_health(model_type, test_type='light'):
                     result['message'] = '对话模型测试成功'
                 
             elif model_type == 'embedding':
-                result['model'] = HUAYAN_EMBEDDING_MODEL
-                from models import get_huayan_embeddings
-                embeddings = get_huayan_embeddings()
+                result['model'] = ALI_TONGYI_EMBEDDING_V4
+                from models import get_ali_embeddings
+                embeddings = get_ali_embeddings()
                 # 生成测试向量
                 test_text = "测试文本"
                 embedding = embeddings.embed_query(test_text)
@@ -408,10 +409,10 @@ def check_model_health(model_type, test_type='light'):
                     result['message'] = '嵌入模型测试成功'
                 
             elif model_type == 'rerank':
-                result['model'] = HUAYAN_RERANK_MODEL
-                from models import get_huayan_rerank
+                result['model'] = ALI_TONGYI_RERANK_MODEL
+                from models import get_ali_rerank
                 from langchain_core.documents import Document
-                reranker = get_huayan_rerank(top_n=3)
+                reranker = get_ali_rerank(top_n=3)
                 # 测试重排序
                 test_docs = [
                     Document(page_content="这是测试文档1"),
