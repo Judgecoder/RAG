@@ -1,0 +1,52 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# 向量数据库和聊天历史（运行时数据）
+chroma/
+chat_history/
+route_index.json
+
+# 上传的文件（运行时数据）
+uploads/
+
+# 模型缓存文件
+mineru_model/
+mineru_output/
+
+# 日志文件
+*.log
+
+# 环境变量文件（敏感信息）
+.env
+.env.local
+.env.*.local
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 构建产物
+build/
+dist/
+*.egg-info/
+
+# Docker 相关文件
+Dockerfile
+docker-compose.yml
+docker-compose*.yml
+
+# 文档
+*.md
+LICENSE
+
+# Git
+.git/
+.gitignore
+
+# Conda 环境备份
+environment_backup.yml
