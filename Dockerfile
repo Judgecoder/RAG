@@ -33,8 +33,7 @@ COPY . .
 RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 
 # 安装 Python 依赖
-RUN pip3 install --upgrade pip && \
-    pip3 install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip3 install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
