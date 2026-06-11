@@ -93,6 +93,19 @@ class DocumentReaderBase(ABC):
         class_name = self.__class__.__name__
         logger.info(f'【{class_name}】{message}')
     
+    def _log_warning(self, message):
+        """
+        【功能】通用警告日志记录方法
+        
+        【参数】
+            message: 警告消息
+            
+        【说明】
+            子类可以使用此方法进行统一的警告日志输出
+        """
+        class_name = self.__class__.__name__
+        logger.warning(f'【{class_name}警告】{message}')
+
     def _log_error(self, message):
         """
         【功能】通用错误日志记录方法

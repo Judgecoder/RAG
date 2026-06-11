@@ -88,7 +88,7 @@ class XLSXDocumentReader(DocumentReaderBase):
             self._log(f'检测到 {len(sheet_names)} 个工作表: {sheet_names}')
 
             documents = []
-            chunk_size = 1000
+            chunk_size = 2000
 
             for sheet_name in sheet_names:
                 df = excel_file.parse(sheet_name=sheet_name)
