@@ -2769,7 +2769,16 @@
                                 const docItem = Array.from(document.querySelectorAll('.document-item')).find(
                                     item => item.dataset.document === highlightDoc
                                 );
-                                if (docItem) docItem.classList.add('selected');
+                                if (docItem) {
+                                    docItem.classList.add('selected');
+                                    // 恢复预览选中状态
+                                    document.querySelectorAll('.file-item, .document-item').forEach(el => {
+                                        el.classList.remove('selected-for-preview');
+                                    });
+                                    docItem.classList.add('selected-for-preview');
+                                    selectedFileName = highlightDoc;
+                                    selectedFileItem = docItem;
+                                }
                             }
                         } catch (e) {
                             console.error('Failed to switch collection:', e);
@@ -3399,39 +3408,7 @@
                 `;
             }
 
-            // 加载文件列表
-            async function loadFiles() {
-                try {
-                    const response = await fetch('/documents/');
-                    const data = await response.json();
 
-                    if (data.message === '获取文档列表成功') {
-                        // 清空文件列表
-                        fileList.innerHTML = '';
-
-                        // 添加每个文件到列表
-                        data.files.forEach(file => {
-                            const item = createFileItem(file.name, file.size);
-                            item.classList.remove('processing');
-                            item.classList.add('success');
-                            const statusEl = item.querySelector('.file-status');
-                            statusEl.className = 'file-status success';
-                            statusEl.innerHTML = '✓ 已上传';
-                            const progressBar = item.querySelector('.progress-bar');
-                            if (progressBar) progressBar.style.display = 'none';
-                            fileList.appendChild(item);
-                        });
-
-                        // 绑定删除按钮事件
-                        bindDeleteEvents();
-
-                        // 绑定文件点击事件用于预览
-                        bindFileClickEvents();
-                    }
-                } catch (error) {
-                    console.error('加载文件列表失败:', error);
-                }
-            }
 
             // 绑定文件点击事件
             function bindFileClickEvents() {
@@ -3497,11 +3474,10 @@
             // 隐藏预览
             function hidePreview() {
                 previewOverlay.classList.remove('show');
-                // 移除选中状态
-                const selectedItem = fileList.querySelector('.selected-for-preview');
-                if (selectedItem) {
-                    selectedItem.classList.remove('selected-for-preview');
-                }
+                // 清除所有预览选中状态（包括上传区域和文档管理器）
+                document.querySelectorAll('.file-item, .document-item').forEach(el => {
+                    el.classList.remove('selected-for-preview');
+                });
                 selectedFileName = null;
             }
 
@@ -3613,9 +3589,6 @@
                     }
                 });
             }
-
-            // 加载文件列表
-            loadFiles();
 
             // 绑定模型状态按钮事件
             if (checkModelsBtn) {
@@ -4140,7 +4113,16 @@
                                         const newDocItem = Array.from(document.querySelectorAll('.document-item')).find(
                                             item => item.dataset.document === selectedDocName
                                         );
-                                        if (newDocItem) newDocItem.classList.add('selected');
+                                        if (newDocItem) {
+                                            newDocItem.classList.add('selected');
+                                            // 恢复预览选中状态
+                                            document.querySelectorAll('.file-item, .document-item').forEach(el => {
+                                                el.classList.remove('selected-for-preview');
+                                            });
+                                            newDocItem.classList.add('selected-for-preview');
+                                            selectedFileName = selectedDocName;
+                                            selectedFileItem = newDocItem;
+                                        }
                                     } catch (e) {
                                         console.error('Failed to switch collection:', e);
                                     }
